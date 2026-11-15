@@ -334,9 +334,9 @@ canvas {
   color: var(--ink-3);
 }
 .poster .big .unit {
-  font-size: 0.32em;
+  font: 400 var(--t-body) / 1 var(--mono);
   letter-spacing: 0;
-  margin-left: 0.12em;
+  margin-left: 0.5em;
   color: var(--ink-2);
 }
 .poster .cap {

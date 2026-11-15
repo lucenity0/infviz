@@ -34,3 +34,8 @@ jobs:
       - run: npx vitest run
       - run: TRACE=public/demo.jsonl npx vitest run
       - run: npm run build
+      # the Envato font must never be committed or shipped in a build
+      - name: licensed font is not in git or dist
+        run: |
+          if git ls-files | grep -i 'fonts/licensed/'; then echo "licensed font is tracked by git"; exit 1; fi
+          if [ -e dist/fonts/licensed ]; then echo "licensed font leaked into dist/"; exit 1; fi

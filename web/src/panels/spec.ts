@@ -47,7 +47,7 @@ export class SpecPanel {
     const bigHtml =
       perPass === null
         ? `<span class="none">No verify passes yet</span>`
-        : [...big].map((ch) => `<span class="d${ch === '.' ? ' p' : ''}">${ch}</span>`).join('') + `<span class="unit">×</span>`;
+        : [...big].map((ch) => `<span class="d${ch === '.' ? ' p' : ''}">${ch}</span>`).join('') + `<span class="unit">tok/pass</span>`;
     if (this.big.dataset.v !== big) {
       this.big.innerHTML = bigHtml;
       this.big.dataset.v = big;
@@ -55,8 +55,8 @@ export class SpecPanel {
     const cap = !s.config?.models.draft
       ? 'Speculation is off for this run (no draft model).'
       : perPass === null
-        ? 'Tokens committed per target forward pass on decode lanes. Plain decoding is 1.00×.'
-        : 'Tokens committed per target forward pass on decode lanes. Plain decoding is 1.00×.';
+        ? 'Tokens committed per target forward pass on decode lanes; plain decoding commits 1.00. Not a wall-clock speed-up.'
+        : 'Tokens committed per target forward pass on decode lanes; plain decoding commits 1.00. Not a wall-clock speed-up.';
     if (this.cap.textContent !== cap) this.cap.textContent = cap;
     const acc = s.totalProposed ? Math.round((100 * s.totalAccepted) / s.totalProposed) : null;
     const facts = `

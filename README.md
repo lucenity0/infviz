@@ -2,7 +2,7 @@
   <img src="assets/hero.svg" alt="infviz replaying a recorded engine trace: the target KV cache filling block by block in request colours, a step counter, each running lane's latest speculation round with accepted and rejected draft tokens, and the request lanes under one playhead." width="100%">
 </p>
 
-An LLM inference server spends most of its life on bookkeeping you never see. It hands out memory in blocks, shares the prompt prefixes that requests have in common, squeezes new requests into a batch that is already running, and lets a small model guess tokens that a big model then accepts or throws away. **Production servers report all of this as averages**: a counter for accepted drafts, a percentage for cache use. You cannot watch a single block or a single rejected token.
+An LLM inference server spends most of its life on bookkeeping you never see. It hands out memory in blocks, shares the prompt prefixes that requests have in common, squeezes new requests into a batch that is already running, and lets a small model guess tokens that a big model then accepts or throws away. **Production servers mostly report this as aggregates**: a counter for accepted drafts, a percentage for cache use. You rarely get to watch a single block or a single rejected token.
 
 infviz is a small, honest inference engine that **emits every one of those decisions as an event**, plus a debugger that rebuilds the engine's state from those events and lets you scrub through it step by step, live or from a recorded trace.
 
@@ -35,7 +35,7 @@ infviz is a small, honest inference engine that **emits every one of those decis
 | Panel | What it shows | How to read it |
 |---|---|---|
 | **KV cache** | Both block pools at the playhead | colour = owned by that request · stacked grey = prompt prefix shared by several requests · dark grey = cached for reuse · empty = free · red hatching = speculative KV discarded · dissolving = evicted |
-| **Speculative decoding** | The headline number and each running lane's latest round | **×** = tokens committed per target forward pass (plain decoding is 1.00×) · dashed = draft guess · solid = accepted · hatched red = first rejection · outlined = the target's own token |
+| **Speculative decoding** | The headline number and each running lane's latest round | **tok/pass** = tokens committed per target forward pass (plain decoding is 1.00; not a speed-up, see §4) · dashed = draft guess · solid = accepted · hatched red = first rejection · outlined = the target's own token |
 | **Timeline** | The whole run on one step axis, one playhead | step time · KV occupancy · accepted vs rejected drafts per step · a lane per request: dotted = waiting, block = prefill, ticks = tokens committed, × = preempted |
 | **Transport** | Playback, and in live mode the engine controls | space plays, ←/→ steps, L follows live · start a load burst, slow the engine, send your own prompt |
 
@@ -64,7 +64,7 @@ The acceptance histogram has two peaks, at **0 and at all 4**. The draft model i
 ### §4 · Where it does not help
 
 - **It debugs this engine, not yours.** infviz reads its own event protocol. It will not attach to vLLM or llama.cpp, and it will not profile a production server.
-- **Fewer steps is not less time.** In a six-request test (fp32, M2 Pro), speculation cut engine steps from 66 to 37, but each step costs four sequential draft passes plus a wider verify pass, so wall-clock time went *up* (4.3 s to 7.2 s after warm-up). The headline number counts tokens per target pass, not speed-up, and the panel says so.
+- **Fewer steps is not less time.** In a six-request test (fp32, M2 Pro), speculation cut engine steps from 66 to 37, but each step costs four sequential draft passes plus a wider verify pass, so wall-clock time went *up* (4.3 s to 7.2 s after warm-up). The headline number is labelled tok/pass, tokens per target pass, not speed-up, and the panel says so.
 - **Small models, greedy only.** Qwen2.5 0.5B → 1.5B, with no temperature or sampling yet. Acceptance under sampling will differ.
 - **"Lossless" is proven in fp32.** In fp32, speculative output is identical to plain greedy decoding (tests below). In bf16, the default, batch-shape-dependent rounding can occasionally flip a near-tie, as in any real serving stack.
 - **Joining late loses prompts.** A browser that connects mid-run gets the cache state from a snapshot, but not the prompt text of requests that were already running.
@@ -125,7 +125,7 @@ cd web && npx vitest run && TRACE=public/demo.jsonl npx vitest run
 
 Built by **S Nafees**. Models: [Qwen2.5-0.5B-Instruct and Qwen2.5-1.5B-Instruct](https://huggingface.co/Qwen) (Apache 2.0). Numbers and tokens are set in Geist Mono and the fallback sans is Inter Tight; both are OFL and installed from npm.
 
-**Font restriction.** The display and label face, **Brutal Milk No 3**, is a commercially licensed Envato font. It is **not in this repository and may not be redistributed**. To see the UI as designed, you need your own licence for it: place the variable font at `web/public/fonts/licensed/brutal-milk-var.woff2`, which git ignores. Without it, every place that uses it **falls back to Inter Tight automatically**, and nothing else changes. Note that `npm run build` copies that folder into `web/dist/`, so do not publish a build that contains the font unless your licence allows it. The README figures embed only the OFL fonts.
+**Font restriction.** The display and label face, **Brutal Milk No 3**, is a commercially licensed Envato font. It is **not in this repository and may not be redistributed**. To see the UI as designed, you need your own licence for it: place the variable font at `web/public/fonts/licensed/brutal-milk-var.woff2`, which git ignores. Without it, every place that uses it **falls back to Inter Tight automatically**, and nothing else changes. `npm run build` strips the folder from `web/dist/` automatically, and CI fails if the font is ever tracked by git or found in a build, so a deployed site never carries it. The README figures embed only the OFL fonts.
 
 **License:** [MIT](LICENSE) for the code. The model weights and the Brutal Milk typeface keep their own licences and are not part of this repository.
 

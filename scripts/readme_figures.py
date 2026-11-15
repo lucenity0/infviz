@@ -280,7 +280,7 @@ def hero(rp: Replay) -> str:
     rx = 690
     body.append(f'<line x1="{rx - 30}" y1="180" x2="{rx - 30}" y2="606" stroke="{HAIR}"/>')
     body.append(t(rx, 208, "STEP", 14, INK3, weight=500, ls=1.4))
-    body.append(t(rx + 260, 208, "TOKENS / TARGET PASS", 14, INK3, weight=500, ls=1.4))
+    body.append(t(rx + 260, 208, "TOK / PASS  (NOT SPEED-UP)", 14, INK3, weight=500, ls=1.4))
     frame_groups = []
     for fi, f in enumerate(F):
         st = rp.at[f]
@@ -289,7 +289,6 @@ def hero(rp: Replay) -> str:
         parts.append(t(rx + 122, 300, f"/{rp.max_step}", 22, INK3))
         pp = st["perpass"]
         parts.append(t(rx + 258, 300, f"{pp:.2f}" if pp else "-.--", 96, INK, SANS, weight=300, ls=-2))
-        parts.append(t(rx + 258 + 0.57 * 96 * 3.4 + 8, 300, "×", 26, INK2))
         b = st["blocks"]
         used = sum(1 for x in b if x["state"] == "used")
         cached = sum(1 for x in b if x["state"] == "cached")
