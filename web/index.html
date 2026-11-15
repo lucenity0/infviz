@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>infviz · inference debugger</title>
+    <meta name="description" content="A visual debugger for LLM inference: KV cache, continuous batching and speculative decoding, rebuilt from real engine events." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230b0c10'/%3E%3Crect x='3' y='3' width='4' height='4' fill='%23e8ebef'/%3E%3Crect x='9' y='3' width='4' height='4' fill='%23e8ebef'/%3E%3Crect x='3' y='9' width='4' height='4' fill='%23e8ebef'/%3E%3Crect x='9.5' y='9.5' width='3' height='3' fill='none' stroke='%237f8895'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app" class="machine">
+      <header id="status" class="strip" aria-label="Engine status"></header>
+
+      <section id="kv" class="cell kv" aria-label="KV cache at the playhead"></section>
+      <aside id="spec" class="cell spec" aria-label="Speculative decoding at the playhead"></aside>
+
+      <div id="transport" class="cell transport" role="toolbar" aria-label="Playback">
+        <div class="tgroup">
+          <button id="b-play" class="tbtn" aria-label="Play or pause (space)" title="Play / pause · space"></button>
+          <button id="b-back" class="tbtn" aria-label="Previous step (left arrow)" title="Previous step · ←">
+            <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 2v8M10 2.2 4.2 6 10 9.8z" /></svg>
+          </button>
+          <button id="b-fwd" class="tbtn" aria-label="Next step (right arrow)" title="Next step · →">
+            <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M9.5 2v8M2 2.2 7.8 6 2 9.8z" /></svg>
+          </button>
+        </div>
+        <div id="speeds" class="tgroup seg" role="group" aria-label="Playback speed"></div>
+        <button id="b-live" class="tbtn text" hidden title="Follow the live engine · L">Follow live</button>
+        <div class="tspacer"></div>
+        <form id="f-load" class="tgroup form" hidden>
+          <label class="lab" for="in-n">Requests</label><input id="in-n" type="number" min="1" value="12" />
+          <label class="lab" for="in-rate">Rate/s</label><input id="in-rate" type="number" min="0.1" step="0.1" value="1.5" />
+          <button class="tbtn text" type="submit">Start load</button>
+        </form>
+        <form id="f-delay" class="tgroup form" hidden>
+          <label class="lab" for="in-delay">Step delay</label><input id="in-delay" type="number" min="0" step="0.05" value="0.15" />
+          <button class="tbtn text" type="submit">Set</button>
+        </form>
+        <form id="f-req" class="tgroup form grow" hidden>
+          <input id="in-prompt" type="text" placeholder="Prompt the engine…" autocomplete="off" aria-label="Prompt" />
+          <button class="tbtn text" type="submit">Send</button>
+        </form>
+        <button id="b-open" class="tbtn text" title="Open a .jsonl trace (or drop one anywhere)">Open trace</button>
+        <input id="file" type="file" accept=".jsonl,.json,.txt" hidden />
+      </div>
+
+      <section id="tl" class="cell tl" aria-label="Timeline"></section>
+    </div>
+
+    <div id="drop" class="drop" hidden><span class="lab">Drop a .jsonl trace to replay it</span></div>
+    <div id="toast" class="toast" role="status" hidden></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
