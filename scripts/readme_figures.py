@@ -9,6 +9,11 @@ assets/hero.svg          an animated replay of web/public/demo.jsonl: the target
                          step-45 frame (the same state the app shows at ?step=45).
 assets/architecture.svg  the system, labelled with the files that implement each box, with
                          one engine step animated in order.
+assets/breakeven.svg     the speculation sweep (results/sweep/*.jsonl): wall-clock speed-up over
+                         plain decoding against k, per device and batch size, and where the
+                         time per token goes (draft vs verify passes).
+
+Pass figure names to regenerate only some: `... readme_figures.py breakeven`.
 
 Colours are read from web/src/tokens.ts. Only open-licence fonts (Geist Mono, Inter Tight)
 are embedded, as small subsets; the Envato display face is never used here.
@@ -540,13 +545,204 @@ def arch() -> str:
             f"<style>{css}</style><defs>{DEFS_COMMON}</defs>{''.join(body)}</svg>\n")
 
 
+# --------------------------------------------------------------------- break-even
+SWEEPS = ROOT / "results" / "sweep"
+
+
+def _median(xs):
+    xs = sorted(xs)
+    n = len(xs)
+    return xs[n // 2] if n % 2 else (xs[n // 2 - 1] + xs[n // 2]) / 2
+
+
+def load_sweeps() -> list[dict]:
+    """One entry per results file: label, and per (batch, k) the median/min/max over repeats."""
+    out = []
+    for f in sorted(SWEEPS.glob("*.jsonl")):
+        rows = [json.loads(line) for line in f.open() if line.strip()]
+        if not rows:
+            continue
+        r0 = rows[0]
+        name = r0["device_name"].replace("Apple ", "").replace("NVIDIA ", "").replace("Tesla ", "")
+        cells: dict = {}
+        for b in sorted({r["batch"] for r in rows}):
+            base = {r["repeat"]: r["tok_per_s"] for r in rows if r["batch"] == b and r["k"] == 0}
+            for k in sorted({r["k"] for r in rows}):
+                sel = [r for r in rows if r["batch"] == b and r["k"] == k and r["repeat"] in base]
+                if not sel:
+                    continue
+                sp = [r["tok_per_s"] / base[r["repeat"]] for r in sel]  # paired with its own k=0
+                cells[(b, k)] = {
+                    "speedup": _median(sp), "lo": min(sp), "hi": max(sp),
+                    "tok_per_pass": _median([r["tok_per_pass"] for r in sel]),
+                    "draft_ms": _median([1000 * r["draft_s"] / r["tokens"] for r in sel]),
+                    "verify_ms": _median([1000 * r["target_s"] / r["tokens"] for r in sel]),
+                    "other_ms": _median([1000 * r["other_s"] / r["tokens"] for r in sel]),
+                    "acceptance": _median([r["acceptance"] or 0 for r in sel]),
+                    "n": len(sel),
+                }
+        out.append({"label": f"{name} · {r0['dtype']}", "file": f.name, "cells": cells,
+                    "batches": sorted({b for b, _ in cells}), "ks": sorted({k for _, k in cells})})
+    return out
+
+
+def breakeven() -> str:
+    data = load_sweeps()
+    if not data:
+        raise SystemExit("no results/sweep/*.jsonl yet: run `infviz sweep` first")
+    W = 1280
+    batches = sorted({b for d in data for b in d["batches"]})
+    ks = sorted({k for d in data for k in d["ks"]})
+    body, text_all = [], []
+
+    def t(*a, **k):
+        text_all.append(str(a[2]))
+        return T(*a, **k)
+
+    MARK = [INK, INK2]  # devices: solid ink, then hollow ink2 (colour is reserved for requests)
+    padL, padR, gap = 96, 40, 72
+    pw = (W - padL - padR - gap * (len(batches) - 1)) / len(batches)
+    top1, h1 = 196, 300  # speed-up chart
+    top2, h2 = top1 + h1 + 150, 200  # time per token chart
+    H = top2 + h2 + 110
+
+    sp_hi = max(max(c["hi"] for c in d["cells"].values()) for d in data)
+    sp_lo = min(min(c["lo"] for c in d["cells"].values()) for d in data)
+    y0, y1 = min(0.0, sp_lo), max(1.5, sp_hi * 1.08)
+    step = 0.25 if y1 <= 2 else 0.5
+    y1 = step * -(-y1 // step)
+    ms_hi = max(c["draft_ms"] + c["verify_ms"] for d in data for c in d["cells"].values())
+    mstep = next(s_ for s_ in (5, 10, 20, 25, 50, 100, 200) if ms_hi / s_ <= 5)
+    m1 = mstep * -(-ms_hi * 1.05 // mstep)
+
+    body.append(f'<rect width="{W}" height="{H}" fill="{BG}"/>')
+    body.append(f'<rect x="0.5" y="0.5" width="{W - 1}" height="{H - 1}" fill="none" stroke="{HAIR}"/>')
+    body.append(t(34, 62, "Does speculation pay for itself?", 40, INK, SANS, weight=300, ls=-0.5))
+    body.append(t(36, 96, "Wall-clock tokens per second against plain decoding (k = 0), same 16 requests, "
+                  "all arriving at once, no KV eviction.", 16, INK3))
+    # legend: devices
+    lx = 36
+    for i, d in enumerate(data):
+        cx = lx + 6
+        if i == 0:
+            body.append(f'<circle cx="{cx}" cy="134" r="5.5" fill="{MARK[0]}"/>')
+        else:
+            body.append(f'<circle cx="{cx}" cy="134" r="5" fill="{BG}" stroke="{MARK[1]}" stroke-width="2"/>')
+        body.append(t(lx + 20, 139, d["label"], 15, INK2))
+        lx += 20 + mono_w(d["label"], 15) + 36
+    body.append(f'<line x1="0" y1="164" x2="{W}" y2="164" stroke="{HAIR}"/>')
+
+    for bi, b in enumerate(batches):
+        x0 = padL + bi * (pw + gap)
+        xs = {k: x0 + 18 + (pw - 36) * (k - ks[0]) / (ks[-1] - ks[0]) for k in ks}
+
+        def Y(v):
+            return top1 + h1 - (v - y0) / (y1 - y0) * h1
+
+        body.append(t(x0, top1 - 14, f"BATCH {b}" + (" · ONE REQUEST AT A TIME" if b == 1 else
+                                                       f" · UP TO {b} REQUESTS PER STEP"), 13, INK3, ls=1.2))
+        # grid + y labels
+        v = y0
+        while v <= y1 + 1e-9:
+            yy = Y(v)
+            body.append(f'<line x1="{x0}" y1="{yy:.1f}" x2="{x0 + pw}" y2="{yy:.1f}" stroke="{GRID}"/>')
+            if bi == 0:
+                one = abs(v - 1) < 1e-9
+                body.append(t(x0 - 14, yy + 5, f"{v:.2f}×", 13, INK if one else INK3, anchor="end",
+                              weight=500 if one else 400))
+            v += step
+        # break-even line
+        yb = Y(1.0)
+        body.append(f'<line x1="{x0}" y1="{yb:.1f}" x2="{x0 + pw}" y2="{yb:.1f}" stroke="{INK3}" stroke-dasharray="5 4"/>')
+        if bi == 0:
+            body.append(t(x0 - 14, yb + 21, "break-even", 12, INK3, anchor="end"))
+        body.append(t(x0 + 8, Y(y0) - 10, "below the dashed line: slower than plain decoding", 12, INK3))
+        # series
+        for di, d in enumerate(data):
+            pts = [(xs[k], Y(d["cells"][(b, k)]["speedup"]), d["cells"][(b, k)]) for k in ks if (b, k) in d["cells"]]
+            col = MARK[min(di, 1)]
+            if len(pts) > 1:
+                body.append(f'<path d="M{" L".join(f"{x:.1f},{y:.1f}" for x, y, _ in pts)}" stroke="{col}" stroke-width="2" fill="none"/>')
+            for (x, y, c) in pts:
+                if c["hi"] - c["lo"] > 0.004:
+                    body.append(f'<line x1="{x:.1f}" y1="{Y(c["lo"]):.1f}" x2="{x:.1f}" y2="{Y(c["hi"]):.1f}" stroke="{col}" stroke-width="1"/>')
+                if di == 0:
+                    body.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="5.5" fill="{col}" stroke="{BG}" stroke-width="2"/>')
+                else:
+                    body.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="5" fill="{BG}" stroke="{col}" stroke-width="2"/>')
+            # direct label: best k
+            best = max(pts[1:] or pts, key=lambda p: p[2]["speedup"])
+            body.append(t(best[0], best[1] - 14, f"{best[2]['speedup']:.2f}×", 14, INK, anchor="middle", weight=500))
+        # x axis + tok/pass row (first device)
+        for k in ks:
+            body.append(t(xs[k], top1 + h1 + 26, f"k {k}", 14, INK2, anchor="middle"))
+        body.append(t(x0 - 14 if bi == 0 else x0, top1 + h1 + 56, "tok/pass" if bi == 0 else "", 12, INK3,
+                      anchor="end"))
+        for di, d in enumerate(data):
+            for k in ks:
+                c = d["cells"].get((b, k))
+                if c:
+                    body.append(t(xs[k], top1 + h1 + 56 + 20 * di, f"{c['tok_per_pass']:.2f}", 13,
+                                  INK2 if di == 0 else INK3, anchor="middle"))
+
+        # ---- time per committed token: verify + draft + host, first device only per panel row
+        def Y2(v):
+            return top2 + h2 - v / m1 * h2
+
+        body.append(t(x0, top2 - 14, "WHERE THE TIME GOES · MS PER COMMITTED TOKEN", 13, INK3, ls=1.2))
+        v = 0
+        while v <= m1 + 1e-9:
+            yy = Y2(v)
+            body.append(f'<line x1="{x0}" y1="{yy:.1f}" x2="{x0 + pw}" y2="{yy:.1f}" stroke="{GRID}"/>')
+            if bi == 0:
+                body.append(t(x0 - 14, yy + 5, f"{v:g}", 13, INK3, anchor="end"))
+            v += mstep
+        nd = len(data)
+        bw = min(26, (pw - 36) / len(ks) / (nd + 0.6) )
+        for di, d in enumerate(data):
+            for k in ks:
+                c = d["cells"].get((b, k))
+                if not c:
+                    continue
+                bx = xs[k] - bw * nd / 2 + di * bw + 1
+                yv = top2 + h2
+                for key, fill in (("verify_ms", INK2 if di == 0 else INK3), ("draft_ms", INK4)):
+                    hgt = c[key] / m1 * h2
+                    if hgt >= 1:
+                        body.append(f'<rect x="{bx:.1f}" y="{yv - hgt + 1:.1f}" width="{bw - 2:.1f}" height="{max(hgt - 2, 0):.1f}" fill="{fill}"/>')
+                    yv -= hgt
+        for k in ks:
+            body.append(t(xs[k], top2 + h2 + 26, f"k {k}", 14, INK2, anchor="middle"))
+
+    # key for the bars
+    ky = top2 + h2 + 66
+    kx = 36
+    for label, fill in (("verify pass + commit (1.5B target)", INK2), ("draft passes (0.5B draft)", INK4)):
+        body.append(f'<rect x="{kx}" y="{ky - 11}" width="14" height="14" fill="{fill}"/>')
+        body.append(t(kx + 22, ky + 1, label, 14, INK3, SANS))
+        kx += 22 + len(label) * 7.4 + 40
+    reps = max(c["n"] for d in data for c in d["cells"].values())
+    body.append(t(W - 36, ky + 1, f"median of {reps} repeats, each paired with its own k 0 run · range shown",
+                  13, INK3, anchor="end"))
+
+    css = font_css("".join(text_all))
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" '
+            f'role="img" aria-label="Speculative decoding wall-clock speed-up against k">'
+            f"<style>{css}</style><defs>{DEFS_COMMON}</defs>{''.join(body)}</svg>\n")
+
+
 def main() -> None:
-    events = [json.loads(line) for line in TRACE.open()]
-    rp = Replay(events)
+    want = set(sys.argv[1:]) or {"hero", "architecture", "breakeven"}
     OUT.mkdir(exist_ok=True)
-    for name, svg in (("hero.svg", hero(rp)), ("architecture.svg", arch())):
-        (OUT / name).write_text(svg)
-        print(f"wrote assets/{name}  {len(svg) / 1024:.0f} KB")
+    figs = {
+        "hero": lambda: hero(Replay([json.loads(line) for line in TRACE.open()])),
+        "architecture": arch,
+        "breakeven": breakeven,
+    }
+    for name in [n for n in figs if n in want]:
+        svg = figs[name]()
+        (OUT / f"{name}.svg").write_text(svg)
+        print(f"wrote assets/{name}.svg  {len(svg) / 1024:.0f} KB")
 
 
 if __name__ == "__main__":

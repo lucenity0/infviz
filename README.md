@@ -2,11 +2,11 @@
   <img src="assets/hero.svg" alt="infviz replaying a recorded engine trace: the target KV cache filling block by block in request colours, a step counter, each running lane's latest speculation round with accepted and rejected draft tokens, and the request lanes under one playhead." width="100%">
 </p>
 
-An LLM inference server spends most of its life on bookkeeping you never see. It hands out memory in blocks, shares the prompt prefixes that requests have in common, squeezes new requests into a batch that is already running, and lets a small model guess tokens that a big model then accepts or throws away. **Production servers mostly report this as aggregates**: a counter for accepted drafts, a percentage for cache use. You rarely get to watch a single block or a single rejected token.
+An LLM inference server spends most of its life on bookkeeping you never see. It hands out memory in blocks, shares the prompt prefixes that requests have in common, squeezes new requests into a batch that is already running, and lets a small model guess tokens that a big model then accepts or throws away. **Production servers mostly report this as aggregates**: a counter for accepted drafts, a percentage for cache use. (vLLM can also export raw KV-block events, keyed by content hash rather than by request.) You rarely get to watch a single block or a single rejected token.
 
 infviz is a small, honest inference engine that **emits every one of those decisions as an event**, plus a debugger that rebuilds the engine's state from those events and lets you scrub through it step by step, live or from a recorded trace.
 
-> **The short version.** On Qwen2.5-1.5B with a 0.5B draft model, the engine runs paged attention, prefix caching, continuous batching and speculative decoding. Its output is verified token for token against Hugging Face transformers and against plain greedy decoding. Every number on screen is rebuilt from events, and a test checks that rebuild against the engine's own snapshots. It is a tool for seeing and explaining serving, not a production profiler.
+> **The short version.** On Qwen2.5-1.5B with a 0.5B draft model, the engine runs paged attention, prefix caching, continuous batching and speculative decoding. In fp32 its output is verified token for token against Hugging Face transformers and against plain greedy decoding. Every number on screen is rebuilt from events, and a test checks that rebuild against the engine's own snapshots. It is a tool for seeing and explaining serving, not a production profiler.
 
 **[The idea](#1--the-idea)** · **[What you see](#2--what-you-see)** · **[A real run](#3--a-real-run)** · **[Limits](#4--where-it-does-not-help)** · **[Run it](#5--run-it)** · **[Repository map](#7--repository-map)**
 
@@ -23,6 +23,8 @@ infviz is a small, honest inference engine that **emits every one of those decis
 - **Continuous batching.** Every engine step admits waiting requests, prefills new ones and decodes running ones in a single ragged forward pass, so requests join and leave mid-flight.
 - **Speculative decoding.** The draft model proposes k = 4 tokens per lane, and the target verifies all of them in one pass. The engine keeps the accepted prefix plus one token of the target's own, and rolls back the rest of the KV cache in both pools.
 - **One event stream.** Every state change is an event ([`docs/EVENTS.md`](docs/EVENTS.md)), sent over a WebSocket or written to a `.jsonl` trace. The web app's reducer is a pure function of those events. Every animation is a function of the playhead position, so scrubbing backwards plays it backwards.
+
+**Related tools.** Several projects show parts of this picture. [vllm-internals-viz](https://github.com/richajoy/vllm-internals-viz) replays vLLM's own scheduler and block pool in the browser, checked against real vLLM traces, with a scripted model instead of attention. [vllm-internals](https://github.com/marcotrinelli/vllm-internals) and [kvstat](https://github.com/samuelkim7/kvstat) record a real vLLM server, rebuilding block placement from its API and metrics or reading its KV-event stream. [SpeculatoViz](https://github.com/samy19980109/Visualize-Speculative-Decoding) and LM Studio colour tokens by draft acceptance, without the cache or the batch, and teaching simulators such as [paged-attention-visualizer](https://github.com/amanichopra/paged-attention-visualizer) animate paged attention with no model. infviz's angle is the combination: real weights, with per-request KV ownership, batching, and per-token acceptance with KV rollback in one event stream that a test checks against the engine's own snapshots.
 
 ---
 
@@ -63,10 +65,14 @@ The acceptance histogram has two peaks, at **0 and at all 4**. The draft model i
 
 ### §4 · Where it does not help
 
+<p align="center">
+  <img src="assets/breakeven.svg" alt="Wall-clock speed-up of speculative decoding over plain decoding on an M2 Pro in bf16, for k from 0 to 8 at batch sizes 1 and 6. At batch 1 the best point, k 2, sits at break-even (0.97 times); at batch 6 every k is slower, down to 0.47 times at k 8. Below, milliseconds per committed token split into verify and draft passes: draft time grows with k faster than verify time falls." width="100%">
+</p>
+
+- **Fewer passes is not less time, on this machine.** On an M2 Pro (bf16), speculation did not pay. At batch 1 the best setting, k = 2, was indistinguishable from break-even (0.97×, 0.96–1.02× over three repeats); every other k was slower. At batch 6 every k was clearly slower, down to 0.47× at k = 8, even though k = 4 commits 2.9 tokens per verify pass. Two measured costs line up with this. A 0.5B draft pass took about half as long as a 1.5B target pass (16–20 ms against 33.5 ms at batch 1), not the third its size suggests; passes this small are probably dominated by kernel launches and Python-side work rather than by reading weights. And at batch 6, one engine step that verifies k + 1 tokens per lane took 94 ms at k = 4, against 46 ms for a plain decode step (both include this engine's Python bookkeeping). This is why the headline number is labelled tok/pass, not speed-up. The sweep is `infviz sweep`, and the raw rows and run conditions are in [`results/sweep/`](results/sweep); a GPU run through the Colab notebook is next.
 - **It debugs this engine, not yours.** infviz reads its own event protocol. It will not attach to vLLM or llama.cpp, and it will not profile a production server.
-- **Fewer steps is not less time.** In a six-request test (fp32, M2 Pro), speculation cut engine steps from 66 to 37, but each step costs four sequential draft passes plus a wider verify pass, so wall-clock time went *up* (4.3 s to 7.2 s after warm-up). The headline number is labelled tok/pass, tokens per target pass, not speed-up, and the panel says so.
 - **Small models, greedy only.** Qwen2.5 0.5B → 1.5B, with no temperature or sampling yet. Acceptance under sampling will differ.
-- **"Lossless" is proven in fp32.** In fp32, speculative output is identical to plain greedy decoding (tests below). In bf16, the default, batch-shape-dependent rounding can occasionally flip a near-tie, as in any real serving stack.
+- **"Lossless" is proven in fp32.** In fp32, speculative output is identical to plain greedy decoding (tests below). In bf16, the default, they diverge: in the sweep, 4 to 8 of the 16 responses differed from plain greedy decoding somewhere, with the same count on every repeat. The likely cause is that a pass over k + 1 tokens rounds differently from one-token decoding, which flips near-ties.
 - **Joining late loses prompts.** A browser that connects mid-run gets the cache state from a snapshot, but not the prompt text of requests that were already running.
 
 ---
@@ -85,11 +91,12 @@ Click **Start load** in the transport bar, or type a prompt and **Send**. Withou
 ```bash
 uv run infviz record --out ../traces/run.jsonl -n 24 --blocks 40     # record a run headless
 uv run infviz check ../traces/run.jsonl                              # honesty check on any trace
+uv run infviz sweep --out ../results/sweep/mine.jsonl                # time speculation against k (about 25 min)
 ```
 
 Drop any `.jsonl` onto the page, or open `?trace=<url>`. Deep links take `?step=45` or a fractional `?pos=30.6`, plus `&play=1` and `&speed=4`. Knobs that make things visible: `--blocks` (smaller means more eviction and preemption), `--max-batch`, `--spec-k`, `--draft none`, `--step-delay`.
 
-**On a GPU.** [`notebooks/record_on_colab.ipynb`](notebooks/record_on_colab.ipynb) records a heavier run on Colab (optionally with a 7B target) and downloads the trace for local replay.
+**On a GPU.** [`notebooks/record_on_colab.ipynb`](notebooks/record_on_colab.ipynb) runs the speculation sweep on a Colab GPU, and can record a heavier run (optionally with a 7B target) for local replay.
 
 ---
 
@@ -114,9 +121,10 @@ cd web && npx vitest run && TRACE=public/demo.jsonl npx vitest run
 | [`engine/`](engine) | The Python package `infviz`: model (`model.py`), block allocator (`kv.py`), scheduler and speculation (`engine.py`), live server, load generator, CLI, reference reducer (`replay.py`), tests |
 | [`web/`](web) | The debugger: Vite + TypeScript, Canvas 2D, no framework. `src/tokens.ts` holds every colour, size and motion value |
 | [`docs/EVENTS.md`](docs/EVENTS.md) | The event protocol both halves agree on |
-| [`notebooks/`](notebooks) | Recording traces on a Colab GPU |
-| [`scripts/readme_figures.py`](scripts/readme_figures.py) | Regenerates the hero (a replay of the demo trace) and the architecture diagram |
-| [`assets/`](assets) | `hero.svg`, `architecture.svg` (animated) and the UI screenshot |
+| [`notebooks/`](notebooks) | The speculation sweep and trace recording on a Colab GPU |
+| [`results/sweep/`](results/sweep) | Raw sweep rows, one JSON line per run, with device, dtype and torch version |
+| [`scripts/readme_figures.py`](scripts/readme_figures.py) | Regenerates the hero (a replay of the demo trace), the architecture diagram and the break-even chart (from `results/sweep/`) |
+| [`assets/`](assets) | `hero.svg`, `architecture.svg` (animated), `breakeven.svg` and the UI screenshot |
 | [`traces/`](traces) | Your recordings (git-ignored) |
 
 ---
