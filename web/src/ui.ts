@@ -1,4 +1,5 @@
 import type { ReqInfo } from './reducer';
+import { GLOSSARY } from './glossary';
 import { reqColor } from './tokens';
 
 export const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -56,6 +57,20 @@ class Tooltip {
 }
 export const tip = new Tooltip();
 
+// hover definitions: any element tagged data-term="<glossary key>"
+let termEl: Element | null = null;
+addEventListener('mouseover', (e) => {
+  const t = (e.target as Element | null)?.closest?.('[data-term]') ?? null;
+  if (t === termEl) return;
+  termEl = t;
+  if (!t) return tip.hide();
+  const d = GLOSSARY[(t as HTMLElement).dataset.term!];
+  if (d) tip.show(`<span class="lab">${esc(d[0])}</span>${esc(d[1])}`, (e as MouseEvent).clientX, (e as MouseEvent).clientY);
+});
+addEventListener('mousemove', (e) => {
+  if (termEl && GLOSSARY[(termEl as HTMLElement).dataset.term!]) tip.show(tip.el.innerHTML, e.clientX, e.clientY);
+});
+
 /** size a canvas backing store to its CSS box; returns css size */
 export function fitCanvas(c: HTMLCanvasElement): { w: number; h: number; dpr: number } {
   const r = c.getBoundingClientRect();
@@ -91,4 +106,27 @@ export function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = '', html
   if (cls) e.className = cls;
   if (html) e.innerHTML = html;
   return e;
+}
+
+/** minimal DOM patch: keep nodes whose markup is unchanged, rewrite only what moved */
+export function patchChildren(a: Element, b: Element, depth: number) {
+  const an = [...a.childNodes],
+    bn = [...b.childNodes];
+  if (depth <= 0 || an.length !== bn.length) {
+    if (a.innerHTML !== b.innerHTML) a.innerHTML = b.innerHTML;
+    return;
+  }
+  an.forEach((n, i) => {
+    const m = bn[i];
+    if (n.nodeType === 1 && m.nodeType === 1) {
+      const x = n as Element,
+        y = m as Element;
+      if (x.outerHTML === y.outerHTML) return;
+      if (x.tagName !== y.tagName) return x.replaceWith(y);
+      for (const at of [...x.attributes]) if (!y.hasAttribute(at.name)) x.removeAttribute(at.name);
+      for (const at of [...y.attributes]) if (x.getAttribute(at.name) !== at.value) x.setAttribute(at.name, at.value);
+      patchChildren(x, y, depth - 1);
+    } else if (n.nodeType !== m.nodeType) n.replaceWith(m);
+    else if (n.textContent !== m.textContent) n.textContent = m.textContent;
+  });
 }

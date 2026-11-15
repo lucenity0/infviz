@@ -18,7 +18,9 @@ export class StatusStrip {
     const src = live ? 'ws /ws' : p.label || '—';
     const step = Math.max(0, Math.ceil(p.pos) - 1);
     const tNow = p.events[Math.max(0, p.cursor - 1)]?.t ?? 0;
-    const ro = (lab: string, v: string) => `<div class="ro"><span class="lab">${lab}</span><span class="v num">${v}</span></div>`;
+    const TERMS: Record<string, string> = { Step: 'step', Running: 'running', Queued: 'queued' };
+    const ro = (lab: string, v: string) =>
+      `<div class="ro"${TERMS[lab] ? ` data-term="${TERMS[lab]}"` : ''}><span class="lab">${lab}</span><span class="v num">${v}</span></div>`;
     const html = `
       <div class="seg brand"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="0" y="0" width="6" height="6" fill="currentColor"/><rect x="8" y="0" width="6" height="6" fill="currentColor"/><rect x="0" y="8" width="6" height="6" fill="currentColor"/><rect x="8.5" y="8.5" width="5" height="5" fill="none" stroke="currentColor"/></svg><b>infviz</b><span class="mode ${modeCls}">${modeTxt}</span></div>
       <div class="seg"><span class="lab">Source</span><span class="v ell">${esc(src)}${p.isMock ? ' · synthetic' : ''}</span></div>

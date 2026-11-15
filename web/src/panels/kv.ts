@@ -62,14 +62,14 @@ export class KvPanel {
   constructor(root: HTMLElement) {
     root.innerHTML = `
       <div class="head">
-        <span class="title">KV cache</span><span class="sub" data-sub></span>
+        <span class="title" data-term="kv">KV cache</span><span class="sub" data-sub></span>
         <span class="grow"></span>
         <div class="legend">
-          <span class="key lab"><i class="sw used"></i>Owned</span>
-          <span class="key lab"><i class="sw shared"></i>Shared prefix</span>
-          <span class="key lab"><i class="sw cached"></i>Cached</span>
-          <span class="key lab"><i class="sw free"></i>Free</span>
-          <span class="key lab"><i class="sw rej"></i>Discarded</span>
+          <span class="key lab" data-term="owned"><i class="sw used"></i>Owned</span>
+          <span class="key lab" data-term="shared"><i class="sw shared"></i>Shared prefix</span>
+          <span class="key lab" data-term="cached"><i class="sw cached"></i>Cached</span>
+          <span class="key lab" data-term="free"><i class="sw free"></i>Free</span>
+          <span class="key lab" data-term="discarded"><i class="sw rej"></i>Discarded</span>
         </div>
       </div>
       <div class="pools" data-body></div>
@@ -164,7 +164,7 @@ export class KvPanel {
     }
     const model = shortModel(p.name === 'target' ? s.config!.models.target : s.config!.models.draft);
     const pct = blocks.length ? Math.round((100 * (used + cached)) / blocks.length) : 0;
-    const html = `<span class="lab">${p.name}</span><span class="pm ell">${esc(model)}</span><span class="grow"></span>
+    const html = `<span class="lab" data-term="pool">${p.name}</span><span class="pm ell">${esc(model)}</span><span class="grow"></span>
       <span class="pr num"><b>${used}</b> used</span><span class="pr num">${shared} shared</span><span class="pr num">${cached} cached</span><span class="pr num">${free} free</span>
       <span class="pr num pct"><b>${pct}%</b></span>`;
     if (p.head.dataset.h !== html) {

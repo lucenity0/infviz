@@ -7,7 +7,7 @@ import type { Player } from '../player';
 import type { ReqInfo } from '../reducer';
 import { selection } from '../select';
 import { reqColor } from '../tokens';
-import { esc, vis } from '../ui';
+import { esc, patchChildren, vis } from '../ui';
 
 /** split a Qwen chat-template prompt into system / user parts (raw text otherwise) */
 function splitPrompt(text: string): { system: string; user: string } {
@@ -17,31 +17,8 @@ function splitPrompt(text: string): { system: string; user: string } {
   return { system: sys?.[1] ?? '', user: usr[1] };
 }
 
-/** minimal DOM patch: keep nodes whose markup is unchanged, rewrite only what moved */
-function patchChildren(a: Element, b: Element, depth: number) {
-  const an = [...a.childNodes],
-    bn = [...b.childNodes];
-  if (depth <= 0 || an.length !== bn.length) {
-    if (a.innerHTML !== b.innerHTML) a.innerHTML = b.innerHTML;
-    return;
-  }
-  an.forEach((n, i) => {
-    const m = bn[i];
-    if (n.nodeType === 1 && m.nodeType === 1) {
-      const x = n as Element,
-        y = m as Element;
-      if (x.outerHTML === y.outerHTML) return;
-      if (x.tagName !== y.tagName) return x.replaceWith(y);
-      for (const at of [...x.attributes]) if (!y.hasAttribute(at.name)) x.removeAttribute(at.name);
-      for (const at of [...y.attributes]) if (x.getAttribute(at.name) !== at.value) x.setAttribute(at.name, at.value);
-      patchChildren(x, y, depth - 1);
-    } else if (n.nodeType !== m.nodeType) n.replaceWith(m);
-    else if (n.textContent !== m.textContent) n.textContent = m.textContent;
-  });
-}
-
-const fact = (lab: string, v: string, title = '') =>
-  `<div class="ro"${title ? ` title="${esc(title)}"` : ''}><span class="lab">${lab}</span><span class="v num">${v}</span></div>`;
+const fact = (lab: string, v: string, term = '') =>
+  `<div class="ro"${term ? ` data-term="${term}"` : ''}><span class="lab">${lab}</span><span class="v num">${v}</span></div>`;
 
 export class InspectPanel {
   private root: HTMLElement;
@@ -116,16 +93,16 @@ export class InspectPanel {
       fact('Prompt', `${r.prompt_len}<span class="dim"> tok</span>`),
       fact('Output', `${r.nTokens}<span class="dim">/${r.max_new_tokens}</span>`),
       fact('Prefix reused', tr.prefixHits ? `${tr.prefixHits * bs}<span class="dim"> tok</span>` : '0',
-        `${tr.prefixHits} full KV blocks of the prompt were already cached and were shared, not recomputed`),
+        `prefix`),
       fact('Arrived', String(r.arriveStep)),
       fact('Admitted', r.admitSteps.join(', ') || '—'),
-      fact(r.finishStep !== null ? 'Finished' : 'Preempted', r.finishStep !== null ? String(r.finishStep) : r.preemptSteps.join(', ') || '—'),
+      fact(r.finishStep !== null ? 'Finished' : 'Preempted', r.finishStep !== null ? String(r.finishStep) : r.preemptSteps.join(', ') || '—', r.finishStep !== null ? '' : 'preempt'),
     ];
     if (k > 0)
       facts.push(
-        fact('Accepted', proposed ? `${Math.round((100 * accepted) / proposed)}%<span class="dim"> of ${proposed}</span>` : '—'),
-        fact('Tok / pass', perPass === null ? '—' : perPass.toFixed(2), 'tokens this request committed per target verify pass'),
-        fact('KV rolled back', `${tr.rolledBack}<span class="dim"> pos</span>`, 'speculative KV positions written and then discarded (target pool)'),
+        fact('Accepted', proposed ? `${Math.round((100 * accepted) / proposed)}%<span class="dim"> of ${proposed}</span>` : '—', 'accepted'),
+        fact('Tok / pass', perPass === null ? '—' : perPass.toFixed(2), 'tokpass'),
+        fact('KV rolled back', `${tr.rolledBack}<span class="dim"> pos</span>`, 'rollback'),
       );
 
     // response with provenance

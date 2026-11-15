@@ -3,6 +3,7 @@ import '@fontsource/geist-mono/500.css';
 import '@fontsource-variable/inter-tight/wght.css';
 import { parseJsonl } from './events';
 import { connectLive } from './live';
+import { currentStep, storyAt } from './panels/feed';
 import { InspectPanel } from './panels/inspect';
 import { KvPanel } from './panels/kv';
 import { SpecPanel } from './panels/spec';
@@ -170,6 +171,24 @@ async function boot() {
   kv.setOverlay('error', 'No live engine on :8000 and no bundled trace.');
 }
 
+// ---------- one-line narration in the transport bar ----------
+const narr = document.getElementById('narr')!;
+const narrStep = narr.querySelector('[data-narr-step]')!;
+const narrText = narr.querySelector('[data-narr-text]')!;
+const PRIORITY = ['preempt', 'evict', 'admit', 'prefill', 'finish', 'arrive', 'spec', 'decode'];
+let narrKey = '';
+narr.addEventListener('click', () => spec.showTab('events'));
+function renderNarration() {
+  const key = `${player.cursor}|${player.events.length}`;
+  if (key === narrKey) return;
+  narrKey = key;
+  const s = currentStep(player);
+  const st = s > 0 ? storyAt(player, s) : null;
+  const lines = st ? st.lines.slice().sort((a, b) => PRIORITY.indexOf(a.kind) - PRIORITY.indexOf(b.kind)) : [];
+  narrStep.textContent = st ? `Step ${s}` : '';
+  narrText.textContent = lines.length ? lines.map((l) => l.text).join(' ') : player.empty ? '' : 'Press play to watch the engine work.';
+}
+
 // ---------- frame loop: everything renders from (state, pos) ----------
 let last = performance.now();
 function frame(now: number) {
@@ -182,6 +201,7 @@ function frame(now: number) {
   spec.render(player);
   timeline.render(player);
   inspect.render(player);
+  renderNarration();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

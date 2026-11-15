@@ -5,6 +5,7 @@
 // own token (outlined ink, FIX or BONUS). Phase is a pure function of the playhead.
 import type { Player } from '../player';
 import { selection } from '../select';
+import { Feed } from './feed';
 import type { ReqInfo } from '../reducer';
 import { MOTION, reqColor } from '../tokens';
 import { el, esc, snippet, tip, tokHtml } from '../ui';
@@ -17,26 +18,52 @@ export class SpecPanel {
   private sub: HTMLElement;
   private laneEls = new Map<number, HTMLElement>();
   private reqs = new Map<number, ReqInfo>();
+  private feedEl: HTMLElement;
+  private legend: HTMLElement;
+  private feed: Feed;
+  private tabs: HTMLButtonElement[] = [];
+  private tab: 'lanes' | 'events' = 'lanes';
+  private player: Player | null = null;
 
   constructor(root: HTMLElement) {
     root.innerHTML = `
-      <div class="head"><span class="title">Speculative decoding</span><span class="sub" data-sub></span></div>
+      <div class="head"><span class="title" data-term="spec">Speculative decoding</span><span class="sub" data-sub></span></div>
       <div class="poster">
         <div class="big" data-big></div>
         <div class="cap" data-cap></div>
         <div class="facts" data-facts></div>
       </div>
-      <div class="head"><span class="lab" title="Each running request’s latest speculation round">Lanes</span><span class="grow"></span>
-        <span class="legend"><span class="key lab"><i class="sw draft"></i>Draft</span><span class="key lab"><i class="sw acc"></i>Accept</span><span class="key lab"><i class="sw rej"></i>Reject</span></span></div>
-      <div class="lanes" data-lanes></div>`;
+      <div class="head"><div class="tabs" role="tablist" aria-label="Lower panel">
+          <button class="tab lab" role="tab" data-tab="lanes" aria-selected="true" title="Each running request’s latest speculation round">Lanes</button>
+          <button class="tab lab" role="tab" data-tab="events" aria-selected="false" title="What the engine did, step by step, in plain language">Events</button></div><span class="grow"></span>
+        <span class="legend" data-legend><span class="key lab" data-term="draft"><i class="sw draft"></i>Draft</span><span class="key lab" data-term="accepted"><i class="sw acc"></i>Accept</span><span class="key lab" data-term="reject"><i class="sw rej"></i>Reject</span></span></div>
+      <div class="lanes" data-lanes></div>
+      <ol class="feed" data-feed hidden></ol>`;
     this.big = root.querySelector('[data-big]')!;
     this.cap = root.querySelector('[data-cap]')!;
     this.facts = root.querySelector('[data-facts]')!;
     this.lanes = root.querySelector('[data-lanes]')!;
     this.sub = root.querySelector('[data-sub]')!;
+    this.feedEl = root.querySelector('[data-feed]')!;
+    this.legend = root.querySelector('[data-legend]')!;
+    this.feed = new Feed(this.feedEl, () => this.player);
+    root.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((b) =>
+      b.addEventListener('click', () => this.showTab(b.dataset.tab as 'lanes' | 'events')),
+    );
+    this.tabs = [...root.querySelectorAll<HTMLButtonElement>('[data-tab]')];
+  }
+
+  showTab(t: 'lanes' | 'events') {
+    this.tab = t;
+    for (const b of this.tabs) b.setAttribute('aria-selected', String(b.dataset.tab === t));
+    this.lanes.hidden = t !== 'lanes';
+    this.legend.hidden = t !== 'lanes';
+    this.feedEl.hidden = t !== 'events';
   }
 
   render(player: Player) {
+    this.player = player;
+    if (this.tab === 'events') this.feed.render(player);
     const s = player.state;
     const k = s.config?.spec_k ?? 0;
     this.sub.textContent = s.config?.models.draft ? `k = ${k}` : 'off';
@@ -48,7 +75,7 @@ export class SpecPanel {
     const bigHtml =
       perPass === null
         ? `<span class="none">No verify passes yet</span>`
-        : [...big].map((ch) => `<span class="d${ch === '.' ? ' p' : ''}">${ch}</span>`).join('') + `<span class="unit">tok/pass</span>`;
+        : [...big].map((ch) => `<span class="d${ch === '.' ? ' p' : ''}">${ch}</span>`).join('') + `<span class="unit" data-term="tokpass">tok/pass</span>`;
     if (this.big.dataset.v !== big) {
       this.big.innerHTML = bigHtml;
       this.big.dataset.v = big;
@@ -61,9 +88,9 @@ export class SpecPanel {
     if (this.cap.textContent !== cap) this.cap.textContent = cap;
     const acc = s.totalProposed ? Math.round((100 * s.totalAccepted) / s.totalProposed) : null;
     const facts = `
-      <div class="ro"><span class="lab">Accepted</span><span class="v num">${acc === null ? '—' : acc + '%'}</span></div>
-      <div class="ro"><span class="lab">Drafts</span><span class="v num">${s.totalAccepted}/${s.totalProposed}</span></div>
-      <div class="ro"><span class="lab">Rounds</span><span class="v num">${Math.round(rounds)}</span></div>`;
+      <div class="ro" data-term="accepted"><span class="lab">Accepted</span><span class="v num">${acc === null ? '—' : acc + '%'}</span></div>
+      <div class="ro" data-term="drafts"><span class="lab">Drafts</span><span class="v num">${s.totalAccepted}/${s.totalProposed}</span></div>
+      <div class="ro" data-term="rounds"><span class="lab">Rounds</span><span class="v num">${Math.round(rounds)}</span></div>`;
     if (this.facts.dataset.v !== facts) {
       this.facts.innerHTML = facts;
       this.facts.dataset.v = facts;

@@ -14,7 +14,7 @@ What comes next for infviz, in the order it will be done. Each item says why it 
 ## B · Debugger upgrades
 
 5. ✓ **Click to inspect a request.** A drawer with the full prompt and response, each token marked by where it came from (accepted from the draft, or the target's own). Derived from `verify` events, no engine change.
-6. **Plain-language explanations.** A live event feed ("step 59: r15 preempted, KV pool full, will recompute") and a hover definition for every term on screen.
+6. ✓ **Plain-language explanations.** A live event feed ("step 59: r15 preempted, KV pool full, will recompute") and a hover definition for every term on screen.
 7. **A/B compare, poster mode and GIF export.** Two traces side by side on one step axis with tok/pass and wall-clock deltas; a fixed-frame poster; a GIF exporter for sharing.
 8. **Presets and live settings.** One-click scenarios, plus pool size, k, batch and speculation controls that restart the engine from the browser. Reuses the engine-control layer from item 1.
 

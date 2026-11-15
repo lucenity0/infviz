@@ -46,14 +46,14 @@ export class TimelinePanel {
   constructor(root: HTMLElement) {
     root.innerHTML = `
       <div class="head">
-        <span class="title">Timeline</span><span class="sub" data-sub></span>
+        <span class="title" data-term="batch">Timeline</span><span class="sub" data-sub></span>
         <span class="grow"></span>
         <div class="legend">
-          <span class="key lab"><i class="sw lane-wait"></i>Waiting</span>
-          <span class="key lab"><i class="sw lane-pre"></i>Prefill</span>
-          <span class="key lab" title="Bar height = tokens committed that step"><i class="sw lane-dec"></i>Decode</span>
-          <span class="key lab"><i class="sw acc"></i>Accepted</span>
-          <span class="key lab"><i class="sw rej"></i>Rejected / preempted</span>
+          <span class="key lab" data-term="waiting"><i class="sw lane-wait"></i>Waiting</span>
+          <span class="key lab" data-term="prefill"><i class="sw lane-pre"></i>Prefill</span>
+          <span class="key lab" data-term="decode"><i class="sw lane-dec"></i>Decode</span>
+          <span class="key lab" data-term="accepted"><i class="sw acc"></i>Accepted</span>
+          <span class="key lab" data-term="reject"><i class="sw rej"></i>Rejected / preempted</span>
         </div>
       </div>
       <div class="plot"><canvas aria-label="Timeline: drag to scrub"></canvas><div class="state" data-overlay hidden></div></div>`;
