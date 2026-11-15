@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+web/dist/
+.DS_Store
+traces/*.jsonl
+
+# Envato-licensed fonts: never commit
+web/public/fonts/licensed/
