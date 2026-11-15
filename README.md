@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/hero-light.svg" alt="Watch an inference server think: the KV cache, continuous batching and one real speculative-decoding round, drawn from a recorded engine trace." width="100%">
+  <img src="assets/hero.svg" alt="infviz replaying a recorded engine trace: the target KV cache filling block by block in request colours, a step counter, each running lane's latest speculation round with accepted and rejected draft tokens, and the request lanes under one playhead." width="100%">
 </p>
 
 An LLM inference server spends most of its life on bookkeeping you never see. It hands out memory in blocks, shares the prompt prefixes that requests have in common, squeezes new requests into a batch that is already running, and lets a small model guess tokens that a big model then accepts or throws away. **Production servers report all of this as averages**: a counter for accepted drafts, a percentage for cache use. You cannot watch a single block or a single rejected token.
@@ -15,7 +15,7 @@ infviz is a small, honest inference engine that **emits every one of those decis
 ### §1 · The idea
 
 <p align="center">
-  <img src="assets/pipeline-light.svg" alt="The engine emits events over a WebSocket or to a trace file; a pure reducer rebuilds state for the panels; a test checks the reducer against engine snapshots." width="100%">
+  <img src="assets/architecture.svg" alt="Architecture, animated through one engine step: requests in, schedule, draft, verify and commit over the block pools and the paged KV cache; every state change goes through the emitter to a WebSocket or a trace file; in the browser a source, player, timeline, reducer and panels rebuild it. Each box names its source file." width="100%">
 </p>
 
 - **Why a new engine.** llama.cpp's server exposes `/metrics` counters and slot status, with no per-block KV occupancy, no eviction events and no per-token accept or reject. Drawing those would mean inventing them, so infviz runs its own engine on real weights instead.
@@ -115,18 +115,20 @@ cd web && npx vitest run && TRACE=public/demo.jsonl npx vitest run
 | [`web/`](web) | The debugger: Vite + TypeScript, Canvas 2D, no framework. `src/tokens.ts` holds every colour, size and motion value |
 | [`docs/EVENTS.md`](docs/EVENTS.md) | The event protocol both halves agree on |
 | [`notebooks/`](notebooks) | Recording traces on a Colab GPU |
-| [`scripts/readme_figures.py`](scripts/readme_figures.py) | Regenerates the figures above from the demo trace |
-| [`assets/`](assets) | README figures and screenshot |
+| [`scripts/readme_figures.py`](scripts/readme_figures.py) | Regenerates the hero (a replay of the demo trace) and the architecture diagram |
+| [`assets/`](assets) | `hero.svg`, `architecture.svg` (animated) and the UI screenshot |
 | [`traces/`](traces) | Your recordings (git-ignored) |
 
 ---
 
 ### §8 · Credits
 
-Built by **S Nafees**. Models: [Qwen2.5-0.5B-Instruct and Qwen2.5-1.5B-Instruct](https://huggingface.co/Qwen) (Apache 2.0). Numbers and tokens are set in Geist Mono and labels fall back to Inter Tight (both OFL). The display face, Brutal Milk No 3, is an Envato-licensed font that is **not part of this repository**. The UI loads it from `web/public/fonts/licensed/` when present and falls back cleanly when it is absent.
+Built by **S Nafees**. Models: [Qwen2.5-0.5B-Instruct and Qwen2.5-1.5B-Instruct](https://huggingface.co/Qwen) (Apache 2.0). Numbers and tokens are set in Geist Mono and the fallback sans is Inter Tight; both are OFL and installed from npm.
 
-**License:** none chosen yet; this is a private repository.
+**Font restriction.** The display and label face, **Brutal Milk No 3**, is a commercially licensed Envato font. It is **not in this repository and may not be redistributed**. To see the UI as designed, you need your own licence for it: place the variable font at `web/public/fonts/licensed/brutal-milk-var.woff2`, which git ignores. Without it, every place that uses it **falls back to Inter Tight automatically**, and nothing else changes. Note that `npm run build` copies that folder into `web/dist/`, so do not publish a build that contains the font unless your licence allows it. The README figures embed only the OFL fonts.
+
+**License:** [MIT](LICENSE) for the code. The model weights and the Brutal Milk typeface keep their own licences and are not part of this repository.
 
 ---
 
-<sub>**P.S.** The two figures at the top are drawn by `scripts/readme_figures.py` straight from the recorded trace, using the reducer that the tests check, so even the README is rebuilt from events.</sub>
+<sub>**P.S.** The hero is not a video. `scripts/readme_figures.py` replays the bundled trace through the same reducer the tests check and writes every frame as SVG animation. Even the README is rebuilt from events, and with animation off it rests on step 45, the same state the app shows at `?step=45`.</sub>
