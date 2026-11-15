@@ -8,6 +8,7 @@
 //               (height = tokens committed that step), preempt (×), finish (cap)
 // Drag anywhere to scrub. Replay shows the whole trace faintly ahead of the playhead.
 import type { Player } from '../player';
+import { selection } from '../select';
 import type { ReqInfo, State } from '../reducer';
 import type { StepRec } from '../timeline';
 import { C, hatch, reqColor, rgba, TYPE } from '../tokens';
@@ -68,6 +69,7 @@ export class TimelinePanel {
     });
     c.addEventListener('pointermove', (e) => {
       this.hoverY = e.offsetY;
+      c.style.cursor = e.offsetX < GUTTER && e.offsetY >= this.lanesTop ? 'pointer' : '';
       if (this.dragging) this.scrubTo(e.offsetX);
       else this.hoverTip(e);
     });
@@ -95,7 +97,9 @@ export class TimelinePanel {
 
   private clickGutter(y: number) {
     const i = Math.floor((y - this.lanesTop + this.scrollY) / LANE);
-    if (this.rows[i]?.kind === 'more') this.showAllFinished = !this.showAllFinished;
+    const row = this.rows[i];
+    if (row?.kind === 'more') this.showAllFinished = !this.showAllFinished;
+    else if (row?.kind === 'lane') selection.toggle(row.rid);
   }
 
   private buildRows(s: State) {
@@ -324,7 +328,12 @@ export class TimelinePanel {
       ctx.fillText(status, GUTTER - 12, mid);
       ctx.textAlign = 'left';
     }
-    if (this.hoverY >= ly && this.hoverY < ly + LANE) {
+    if (selection.rid === r.rid) {
+      ctx.fillStyle = rgba(C.ink, 0.07);
+      ctx.fillRect(0, ly, w, LANE);
+      ctx.fillStyle = C.ink;
+      ctx.fillRect(0, ly, 2, LANE);
+    } else if (this.hoverY >= ly && this.hoverY < ly + LANE) {
       ctx.fillStyle = rgba(C.ink, 0.04);
       ctx.fillRect(0, ly, w, LANE);
     }
@@ -412,7 +421,7 @@ export class TimelinePanel {
       if (!r) return tip.hide();
       const acc = r.proposed ? `${Math.round((100 * r.accepted) / r.proposed)}% of ${r.proposed} drafts accepted` : '';
       tip.show(
-        `<span class="lab">request r${r.rid} · ${r.status}</span><b>${esc(snippet(r.prompt_text).slice(0, 90))}</b><br/>prompt ${r.prompt_len} tok · out ${r.nTokens}/${r.max_new_tokens}<br/>arrived ${r.arriveStep} · admitted ${r.admitSteps.join(', ') || '—'}${r.preemptSteps.length ? ` · preempted ${r.preemptSteps.join(', ')}` : ''}${r.finishStep !== null ? ` · finished ${r.finishStep} (${r.finishReason})` : ''}${acc ? '<br/>' + acc : ''}`,
+        `<span class="lab">request r${r.rid} · ${r.status}</span><b>${esc(snippet(r.prompt_text).slice(0, 90))}</b><br/>prompt ${r.prompt_len} tok · out ${r.nTokens}/${r.max_new_tokens}<br/>arrived ${r.arriveStep} · admitted ${r.admitSteps.join(', ') || '—'}${r.preemptSteps.length ? ` · preempted ${r.preemptSteps.join(', ')}` : ''}${r.finishStep !== null ? ` · finished ${r.finishStep} (${r.finishReason})` : ''}${acc ? '<br/>' + acc : ''}${e.offsetX < GUTTER ? '<br/><span class="dim">click to inspect</span>' : ''}`,
         e.clientX,
         e.clientY,
       );

@@ -4,6 +4,7 @@
 // (solid ink) / first rejection (hatched red) / voided rest (struck) -> the target's
 // own token (outlined ink, FIX or BONUS). Phase is a pure function of the playhead.
 import type { Player } from '../player';
+import { selection } from '../select';
 import type { ReqInfo } from '../reducer';
 import { MOTION, reqColor } from '../tokens';
 import { el, esc, snippet, tip, tokHtml } from '../ui';
@@ -91,6 +92,7 @@ export class SpecPanel {
             );
         });
         lane.addEventListener('mouseleave', () => tip.hide());
+        lane.addEventListener('click', () => selection.toggle(rid));
         this.laneEls.set(rid, lane);
       }
       if (lane.parentElement !== this.lanes || lane !== this.lanes.children[live.size - 1]) {
@@ -131,6 +133,7 @@ export class SpecPanel {
       return e;
     };
     (lane.querySelector('.sw') as HTMLElement).style.background = reqColor(r.colorSlot);
+    lane.classList.toggle('sel', selection.rid === r.rid);
     set('.rid', `r${r.rid}`);
     set('.rate', r.proposed ? `${Math.round((100 * r.accepted) / r.proposed)}%` : '—');
 

@@ -3,11 +3,13 @@ import '@fontsource/geist-mono/500.css';
 import '@fontsource-variable/inter-tight/wght.css';
 import { parseJsonl } from './events';
 import { connectLive } from './live';
+import { InspectPanel } from './panels/inspect';
 import { KvPanel } from './panels/kv';
 import { SpecPanel } from './panels/spec';
 import { StatusStrip } from './panels/status';
 import { TimelinePanel } from './panels/timeline';
 import { Player } from './player';
+import { selection } from './select';
 import { applyTokens } from './tokens';
 import { Transport } from './transport';
 import { reduceMotion } from './ui';
@@ -32,6 +34,7 @@ const status = new StatusStrip(document.getElementById('status')!);
 const kv = new KvPanel(document.getElementById('kv')!);
 const spec = new SpecPanel(document.getElementById('spec')!);
 const timeline = new TimelinePanel(document.getElementById('tl')!);
+const inspect = new InspectPanel(document.getElementById('inspect')!);
 
 function toast(msg: string, ms = 3500) {
   const t = document.getElementById('toast')!;
@@ -178,10 +181,11 @@ function frame(now: number) {
   kv.render(player);
   spec.render(player);
   timeline.render(player);
+  inspect.render(player);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
 matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', () => (player.stepwise = reduceMotion()));
 boot();
 
-(window as unknown as { infviz: unknown }).infviz = { player };
+(window as unknown as { infviz: unknown }).infviz = { player, selection };

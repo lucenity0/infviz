@@ -95,6 +95,10 @@ canvas {
 #spec {
   grid-area: spec;
 }
+#inspect {
+  grid-area: spec; /* a drawer over the speculation column; Esc returns to it */
+  z-index: 2;
+}
 #transport {
   grid-area: transport;
 }
@@ -367,8 +371,15 @@ canvas {
   column-gap: var(--s2);
   align-items: center;
 }
+.lane {
+  cursor: pointer;
+}
 .lane:hover {
   background: var(--sunken);
+}
+.lane.sel {
+  background: var(--sunken);
+  box-shadow: inset 2px 0 0 var(--ink);
 }
 .lane .sw {
   align-self: center;
@@ -567,6 +578,167 @@ input:focus-visible {
 }
 .transport input::placeholder {
   color: var(--ink-3);
+}
+
+/* ---------- request inspector ---------- */
+.inspect {
+  display: flex;
+  flex-direction: column;
+}
+.inspect .head .sw {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  margin-right: calc(-1 * var(--s2));
+}
+.inspect .head .sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.inspect .x {
+  height: 31px;
+  min-width: 32px;
+  margin-right: calc(-1 * var(--s4));
+  border-right: 0;
+  border-left: 1px solid var(--hair);
+  font: 400 18px / 1 var(--mono);
+}
+.ibody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--hair) transparent;
+}
+.ifacts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s3) var(--s3);
+  padding: var(--s3) var(--s4);
+  border-bottom: 1px solid var(--hair);
+}
+.ifacts .ro {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.ifacts .v {
+  font-size: var(--t-body);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sect {
+  padding: var(--s3) var(--s4);
+  border-bottom: 1px solid var(--hair);
+  min-width: 0;
+}
+.sect.grow {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+.sect .sh {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+  margin-bottom: var(--s2);
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.sect .ikey {
+  flex: 1 1 100%;
+  min-width: 0;
+  white-space: normal;
+}
+.sect .ikey,
+.sect .sh .dim {
+  font: 400 var(--t-micro) / 1.4 var(--mono);
+  color: var(--ink-3);
+}
+.sect p {
+  margin: 0;
+  font: 400 var(--t-small) / 1.5 var(--mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.sect p.sys {
+  color: var(--ink-3);
+  margin-bottom: var(--s2);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.sect p.usr {
+  color: var(--ink);
+}
+.resp {
+  font: 400 var(--t-small) / 1.75 var(--mono);
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 40vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+/* accepted from the draft = solid tint (the chip's "accepted" fill, quietened for running text) */
+.td {
+  background: color-mix(in srgb, var(--ink) 18%, transparent);
+}
+.tt {
+  color: var(--ink);
+}
+.ikey .td,
+.ikey .tt {
+  padding: 0 3px;
+  color: var(--ink);
+}
+s.rj {
+  color: var(--discard);
+  text-decoration-color: var(--discard);
+  font-size: 0.85em;
+  margin: 0 1px;
+  opacity: 0.9;
+}
+.lk {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-2);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  font: inherit;
+}
+.lk:hover {
+  color: var(--ink);
+}
+.share {
+  margin-top: var(--s2);
+  font-size: var(--t-micro);
+  color: var(--ink-3);
+}
+.rounds {
+  display: block;
+  max-width: 100%;
+  height: 28px;
+}
+.rounds .sa {
+  fill: var(--ink-2);
+}
+.rounds .sr {
+  fill: url(#ihz);
+}
+.rounds .hz {
+  stroke: var(--discard);
+  stroke-width: 1.5;
 }
 
 /* ---------- overlays ---------- */

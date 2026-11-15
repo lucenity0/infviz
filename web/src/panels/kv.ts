@@ -9,6 +9,7 @@
 // (speculative rollback) retreats hatched red, evicted blocks dissolve.
 import type { InfvizEvent, PoolName } from '../events';
 import type { Player } from '../player';
+import { selection } from '../select';
 import type { Block, State } from '../reducer';
 import { C, MOTION, hatch, reqColor, rgba } from '../tokens';
 import { clamp01, el, esc, fitCanvas, shortModel, snippet, tip } from '../ui';
@@ -100,6 +101,18 @@ export class KvPanel {
     for (const p of this.pools) {
       p.n = p.name === 'target' ? cfg.pools.target.n_blocks : cfg.pools.draft!.n_blocks;
       p.canvas.addEventListener('mousemove', (e) => this.onMove(p, e));
+      p.canvas.addEventListener('click', () => {
+        const h = this.hover;
+        const st = this.player?.state;
+        if (!h || !st) return selection.set(null);
+        const b = (h.pool.name === 'target' ? st.pools.target : st.pools.draft)?.[h.block];
+        if (b && b.state === 'used' && b.owners.length) {
+          const cur = selection.rid;
+          // shared block: cycle through its owners
+          const j = cur !== null ? b.owners.indexOf(cur) : -1;
+          selection.set(j >= 0 && b.owners.length > 1 ? b.owners[(j + 1) % b.owners.length] : j >= 0 ? null : b.owners[0]);
+        } else selection.set(null);
+      });
       p.canvas.addEventListener('mouseleave', () => {
         this.hover = null;
         tip.hide();
@@ -217,10 +230,13 @@ export class KvPanel {
     const bs = s.config!.block_size;
     const blocks: Block[] = (p.name === 'target' ? s.pools.target : s.pools.draft) ?? [];
 
-    // ---- static state at the cursor
+    // ---- static state at the cursor (an inspected request keeps full contrast; the rest recede)
+    const focus = selection.rid;
     for (let i = 0; i < blocks.length; i++) {
       const b = blocks[i];
       const [bx, by] = this.blockXY(G, i);
+      const base = focus === null || (b.state === 'used' && b.owners.includes(focus)) ? 1 : 0.28;
+      ctx.globalAlpha = base;
       const shared = b.state === 'used' && b.owners.length > 1;
       if (shared) {
         // ghost layers: one offset frame per extra owner, so sharing reads as physical stacking
@@ -245,9 +261,9 @@ export class KvPanel {
         else fill = hue!;
         ctx.fillStyle = fill;
         if (b.state === 'free' || k >= b.filled) {
-          ctx.globalAlpha = b.state === 'free' ? 0.55 : 1;
+          ctx.globalAlpha = base * (b.state === 'free' ? 0.55 : 1);
           ctx.fillRect(x, y, cw, ch);
-          ctx.globalAlpha = 1;
+          ctx.globalAlpha = base;
         } else ctx.fillRect(x, y, cw, ch);
       }
       if (shared) {
@@ -263,6 +279,7 @@ export class KvPanel {
         ctx.fillStyle = hue;
         ctx.fillRect(bx - 3, by, 2, G.bh);
       }
+      ctx.globalAlpha = 1;
     }
 
     // ---- motion: every mark below is f(playhead - event time)
@@ -380,7 +397,7 @@ export class KvPanel {
             ? `shared prefix · ${b.owners.length} owners`
             : `owned · logical block ${b.idx}`;
     tip.show(
-      `<span class="lab">${p.name} pool · block ${i}</span><b>${what}</b><br/>${b.filled}/${bs} tokens${owners ? '<br/>' + owners : ''}`,
+      `<span class="lab">${p.name} pool · block ${i}</span><b>${what}</b><br/>${b.filled}/${bs} tokens${owners ? '<br/>' + owners + '<br/><span class="dim">click to inspect</span>' : ''}`,
       e.clientX,
       e.clientY,
     );
