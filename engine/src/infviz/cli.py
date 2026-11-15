@@ -82,6 +82,12 @@ def cmd_record(a) -> None:
     check(a.out)
 
 
+def cmd_sweep(a) -> None:
+    from .sweep import main as sweep
+
+    sweep(a)
+
+
 def cmd_check(a) -> None:
     from .replay import main as check
 
@@ -106,6 +112,21 @@ def main() -> None:
     r.add_argument("--mean-gap", type=float, default=4.0, help="mean steps between arrivals")
     r.add_argument("--seed", type=int, default=0)
     r.set_defaults(fn=cmd_record)
+
+    w = sub.add_parser("sweep", help="time speculative decoding against k and batch size")
+    w.add_argument("--target", default="Qwen/Qwen2.5-1.5B-Instruct")
+    w.add_argument("--draft", default="Qwen/Qwen2.5-0.5B-Instruct")
+    w.add_argument("--device", default=None)
+    w.add_argument("--dtype", default="bf16", choices=DTYPES)
+    w.add_argument("--block-size", type=int, default=16)
+    w.add_argument("--blocks", type=int, default=320, help="per pool; large so nothing is evicted")
+    w.add_argument("--ks", default="0,1,2,3,4,6,8", help="comma list, must start with 0")
+    w.add_argument("--batches", default="1,6", help="max batch sizes, comma list")
+    w.add_argument("--repeats", type=int, default=3)
+    w.add_argument("-n", type=int, default=16, help="number of requests")
+    w.add_argument("--seed", type=int, default=0)
+    w.add_argument("--out", default="../results/sweep/sweep.jsonl")
+    w.set_defaults(fn=cmd_sweep)
 
     c = sub.add_parser("check", help="verify a trace's snapshots are reproducible from its events")
     c.add_argument("trace")

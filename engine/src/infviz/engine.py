@@ -6,6 +6,7 @@ rollback / commit / finish). Every state change is emitted as an event.
 """
 from __future__ import annotations
 
+import functools
 import json
 import queue
 import threading
@@ -47,6 +48,7 @@ class Request:
         return self.prompt_ids + self.output
 
 
+@functools.lru_cache(maxsize=None)
 def resolve_model(name_or_path: str) -> Path:
     p = Path(name_or_path)
     if p.exists():
@@ -54,6 +56,22 @@ def resolve_model(name_or_path: str) -> Path:
     from huggingface_hub import snapshot_download
 
     return Path(snapshot_download(name_or_path, allow_patterns=["*.json", "*.safetensors", "*.txt"]))
+
+
+class ModelStore:
+    """Keeps loaded weights so several engines (a sweep, a settings change) can share them.
+
+    Each Engine still allocates its own KV caches; only the read-only weights are reused.
+    """
+
+    def __init__(self) -> None:
+        self._models: dict[tuple, Model] = {}
+
+    def get(self, path: Path, device: str, dtype: torch.dtype) -> Model:
+        key = (str(path), device, dtype)
+        if key not in self._models:
+            self._models[key] = Model(path, device, dtype)
+        return self._models[key]
 
 
 def default_device() -> str:
@@ -80,12 +98,14 @@ class Engine:
         prefill_budget: int = 1024,
         snapshot_every: int = 8,
         emitter: Emitter | None = None,
+        store: ModelStore | None = None,
     ):
         self.device = device or default_device()
         self.em = emitter or Emitter()
         tpath = resolve_model(target)
-        self.target = Model(tpath, self.device, dtype)
-        self.draft = Model(resolve_model(draft), self.device, dtype) if draft and spec_k > 0 else None
+        load = store.get if store else Model
+        self.target = load(tpath, self.device, dtype)
+        self.draft = load(resolve_model(draft), self.device, dtype) if draft and spec_k > 0 else None
         self.k = spec_k if self.draft else 0
         self.tok = Tokenizer.from_file(str(tpath / "tokenizer.json"))
         self.eos = self._eos_ids(tpath)
@@ -275,9 +295,11 @@ class Engine:
                 toks = r.all[start:] if j == 0 else [props[r.rid][-1]]
                 inputs.append(SeqInput(toks, start, self.dpool.slots(r.rid, start + len(toks))))
             logits = self.draft.forward(inputs, self.dcache)
-            for r, inp, lg in zip(decodes, inputs, logits):
+            # one device sync per draft pass, not one per lane
+            nxt = torch.stack([lg[-1, : self.V] for lg in logits]).argmax(-1).tolist()
+            for r, inp, t in zip(decodes, inputs, nxt):
                 self.dpool.set_len(r.rid, inp.start_pos + len(inp.tokens))
-                props[r.rid].append(int(lg[-1, : self.V].argmax()))
+                props[r.rid].append(t)
         for r in decodes:
             p = props[r.rid]
             self.em.emit("draft_propose", rid=r.rid, tokens=p, texts=[self.decode([t]) for t in p])
@@ -297,11 +319,16 @@ class Engine:
             toks = [r.all[-1]] + props.get(r.rid, [])
             inputs.append(SeqInput(toks, T, self.tpool.slots(r.rid, T + len(toks)), all_logits=True))
         logits = self.target.forward(inputs, self.tcache)
+        # one device sync for the whole verify pass, then split per lane
+        flat = torch.cat([lg[:, : self.V].argmax(-1) for lg in logits]).tolist()
+        all_preds, off = [], 0
+        for lg in logits:
+            all_preds.append(flat[off : off + lg.shape[0]])
+            off += lg.shape[0]
 
-        for r, inp, lg in zip(lanes, inputs, logits):
+        for r, inp, preds in zip(lanes, inputs, all_preds):
             T = inp.start_pos
             self.tpool.set_len(r.rid, T + len(inp.tokens))
-            preds = lg[:, : self.V].argmax(-1).tolist()
             if not r.prefilled:
                 r.prefilled = True
                 self._commit(r, [preds[-1]])
