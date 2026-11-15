@@ -1,0 +1,119 @@
+"""infviz CLI: serve (live), record (trace file), check (honesty check on a trace)."""
+from __future__ import annotations
+
+import argparse
+import time
+
+import torch
+
+DTYPES = {"bf16": torch.bfloat16, "fp16": torch.float16, "fp32": torch.float32}
+
+
+def engine_args(p: argparse.ArgumentParser) -> None:
+    p.add_argument("--target", default="Qwen/Qwen2.5-1.5B-Instruct")
+    p.add_argument("--draft", default="Qwen/Qwen2.5-0.5B-Instruct", help="'none' disables speculation")
+    p.add_argument("--device", default=None)
+    p.add_argument("--dtype", default="bf16", choices=DTYPES)
+    p.add_argument("--block-size", type=int, default=16)
+    p.add_argument("--blocks", type=int, default=56, help="target KV pool size (blocks)")
+    p.add_argument("--draft-blocks", type=int, default=None)
+    p.add_argument("--max-batch", type=int, default=6)
+    p.add_argument("--spec-k", type=int, default=4)
+    p.add_argument("--snapshot-every", type=int, default=8)
+
+
+def build_engine(a, emitter=None):
+    from .engine import Engine
+
+    return Engine(
+        a.target,
+        None if a.draft == "none" else a.draft,
+        device=a.device,
+        dtype=DTYPES[a.dtype],
+        block_size=a.block_size,
+        n_blocks=a.blocks,
+        draft_blocks=a.draft_blocks,
+        max_batch=a.max_batch,
+        spec_k=0 if a.draft == "none" else a.spec_k,
+        snapshot_every=a.snapshot_every,
+        emitter=emitter,
+    )
+
+
+def cmd_serve(a) -> None:
+    import uvicorn
+
+    from .server import create_app
+
+    eng = build_engine(a)
+    eng.step_delay = a.step_delay
+    print(f"infviz: engine ready on {eng.device}; ws://{a.host}:{a.port}/ws")
+    uvicorn.run(create_app(eng), host=a.host, port=a.port, log_level="warning")
+
+
+def cmd_record(a) -> None:
+    from . import loadgen
+    from .events import Emitter, JsonlSink
+    from .replay import main as check
+
+    em = Emitter()
+    sink = JsonlSink(a.out)
+    em.sinks.append(sink)
+    eng = build_engine(a, em)
+    work = loadgen.make_workload(a.n, a.seed)
+    arrivals = loadgen.arrival_steps(a.n, a.mean_gap, a.seed)
+    t0, i = time.time(), 0
+    while True:
+        while i < len(work) and arrivals[i] <= eng.em.step:
+            p, max_new, system = work[i]
+            eng.add_request(p, max_new, system=system)
+            i += 1
+        progressed = eng.step()
+        if not progressed and i >= len(work):
+            break
+        if not progressed:  # idle gap before the next arrival: advance the clock
+            eng.em.step += 1
+        if eng.em.step % 20 == 0:
+            print(f"  step {eng.em.step}  running={len(eng.running)} waiting={len(eng.waiting)} "
+                  f"done={len(eng.finished)}/{a.n}", flush=True)
+    eng.em.emit("snapshot", **eng.snapshot())
+    sink.close()
+    print(f"recorded {eng.em.step} steps in {time.time() - t0:.1f}s -> {a.out}")
+    check(a.out)
+
+
+def cmd_check(a) -> None:
+    from .replay import main as check
+
+    check(a.trace)
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(prog="infviz")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+
+    s = sub.add_parser("serve", help="run the live engine + websocket server")
+    engine_args(s)
+    s.add_argument("--host", default="127.0.0.1")
+    s.add_argument("--port", type=int, default=8000)
+    s.add_argument("--step-delay", type=float, default=0.15, help="seconds between steps (watchability)")
+    s.set_defaults(fn=cmd_serve)
+
+    r = sub.add_parser("record", help="run a workload headless and write a JSONL trace")
+    engine_args(r)
+    r.add_argument("--out", default="../traces/demo.jsonl")
+    r.add_argument("-n", type=int, default=16, help="number of requests")
+    r.add_argument("--mean-gap", type=float, default=4.0, help="mean steps between arrivals")
+    r.add_argument("--seed", type=int, default=0)
+    r.set_defaults(fn=cmd_record)
+
+    c = sub.add_parser("check", help="verify a trace's snapshots are reproducible from its events")
+    c.add_argument("trace")
+    c.set_defaults(fn=cmd_check)
+
+    a = ap.parse_args()
+    a.fn(a)
+
+
+if __name__ == "__main__":
+    main()
