@@ -604,7 +604,7 @@ def breakeven() -> str:
     pw = (W - padL - padR - gap * (len(batches) - 1)) / len(batches)
     top1, h1 = 196, 300  # speed-up chart
     top2, h2 = top1 + h1 + 150, 200  # time per token chart
-    H = top2 + h2 + 110
+    H = top2 + h2 + 138
 
     sp_hi = max(max(c["hi"] for c in d["cells"].values()) for d in data)
     sp_lo = min(min(c["lo"] for c in d["cells"].values()) for d in data)
@@ -670,15 +670,24 @@ def breakeven() -> str:
                     body.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="5.5" fill="{col}" stroke="{BG}" stroke-width="2"/>')
                 else:
                     body.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="5" fill="{BG}" stroke="{col}" stroke-width="2"/>')
-            # direct label: best k
-            best = max(pts[1:] or pts, key=lambda p: p[2]["speedup"])
-            body.append(t(best[0], best[1] - 14, f"{best[2]['speedup']:.2f}×", 14, INK, anchor="middle", weight=500))
+            # direct label at the best k > 0: above if this series is the higher one there
+            bk = max((k for k in ks[1:] if (b, k) in d["cells"]), key=lambda k: d["cells"][(b, k)]["speedup"])
+            bx_, by_ = xs[bk], Y(d["cells"][(b, bk)]["speedup"])
+            others = [o["cells"][(b, bk)]["speedup"] for o in data if o is not d and (b, bk) in o["cells"]]
+            above = not others or d["cells"][(b, bk)]["speedup"] >= max(others)
+            body.append(t(bx_, by_ - 14 if above else by_ + 26, f"{d['cells'][(b, bk)]['speedup']:.2f}×", 14,
+                          INK if di == 0 else INK2, anchor="middle", weight=500))
         # x axis + tok/pass row (first device)
         for k in ks:
             body.append(t(xs[k], top1 + h1 + 26, f"k {k}", 14, INK2, anchor="middle"))
-        body.append(t(x0 - 14 if bi == 0 else x0, top1 + h1 + 56, "tok/pass" if bi == 0 else "", 12, INK3,
-                      anchor="end"))
+        if bi == 0:
+            body.append(t(x0 - 30, top1 + h1 + 56, "tok/pass", 12, INK3, anchor="end"))
         for di, d in enumerate(data):
+            cy_ = top1 + h1 + 52 + 20 * di
+            if di == 0:
+                body.append(f'<circle cx="{x0 - 14}" cy="{cy_:.1f}" r="4" fill="{MARK[0]}"/>')
+            else:
+                body.append(f'<circle cx="{x0 - 14}" cy="{cy_:.1f}" r="3.5" fill="{BG}" stroke="{MARK[1]}" stroke-width="1.5"/>')
             for k in ks:
                 c = d["cells"].get((b, k))
                 if c:
@@ -721,9 +730,12 @@ def breakeven() -> str:
         body.append(f'<rect x="{kx}" y="{ky - 11}" width="14" height="14" fill="{fill}"/>')
         body.append(t(kx + 22, ky + 1, label, 14, INK3, SANS))
         kx += 22 + len(label) * 7.4 + 40
+    if len(data) > 1:
+        note = "bars per k: " + ", then ".join(d["label"].split(" · ")[0] for d in data)
+        body.append(t(kx, ky + 1, note, 14, INK3, SANS))
     reps = max(c["n"] for d in data for c in d["cells"].values())
-    body.append(t(W - 36, ky + 1, f"median of {reps} repeats, each paired with its own k 0 run · range shown",
-                  13, INK3, anchor="end"))
+    body.append(t(36, ky + 32, f"median of {reps} repeats, each paired with its own k 0 run · range shown · "
+                  "raw rows in results/sweep/", 13, INK3))
 
     css = font_css("".join(text_all))
     return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" '

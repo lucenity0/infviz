@@ -13,3 +13,12 @@ One JSON line per timed run, written by `infviz sweep` (see `engine/src/infviz/s
 Apple M2 Pro, 16 GB, MPS, bf16, torch 2.15.0, Qwen2.5-1.5B-Instruct ← Qwen2.5-0.5B-Instruct, 2026-11-16.
 
 Run conditions, stated because they affect the spread: an idle `infviz serve` process was holding a second copy of the weights in memory, and during part of the run other work (headless Chrome renders, unit tests) ran on the same machine. Repeat 0 was 5–10% slower than repeats 1 and 2 across the board, for every k, so the paired speed-ups move less than the raw tokens per second. The batch-1 result at k = 2 (0.96–1.02×) is within that noise; batch 6 is slower at every k by far more than the spread.
+
+## `cuda-nvidia-l4-bf16.jsonl`
+
+NVIDIA L4 (24 GB, compute capability 8.9) on a Google Colab VM with a 12-vCPU Intel Xeon @ 2.20 GHz, CUDA, bf16, torch 2.14.1+cu130, Python 3.13, same models and workload, 2026-11-16. Run with the Colab CLI (`colab new --gpu L4`, then `infviz sweep` on the VM); nothing else ran on the VM during the timed repeats. Repeats agree to within about 1%.
+
+Two extra measurements on the same VM, single runs, kept here because §4 relies on them:
+
+- **Per-pass cost tracks layer count.** `infviz sweep --target Qwen/Qwen2.5-0.5B-Instruct --ks 0` ran plain decoding of the draft model alone at 37.5 tok/s (batch 1) and 167.3 tok/s (batch 6). The 1.5B target ran at 31.8 and 141.6, so one 0.5B pass costs about 0.85 of a 1.5B pass. Their layer counts are 24 and 28 (ratio 0.86); their sizes differ by about 3×.
+- **The GPU waits on the host.** Sampling `nvidia-smi --query-gpu=utilization.gpu` every 200 ms during a 16-request plain-decoding run at batch 1 gave a median of 49% over the busy samples: about half the time no kernel was running. (That counter is coarse: it reports whether any kernel was active, not how much of the GPU it used.)

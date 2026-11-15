@@ -4,11 +4,11 @@ What comes next for infviz, in the order it will be done. Each item says why it 
 
 ## A · A measured finding
 
-§4 used to rest on one fp32 anecdote ("66 steps → 37, but 4.3 s → 7.2 s"). It now cites a measured sweep on Apple silicon; a GPU series is next.
+§4 used to rest on one fp32 anecdote ("66 steps → 37, but 4.3 s → 7.2 s"). It now cites measured sweeps on an M2 Pro and an NVIDIA L4.
 
 1. ✓ **Speculation sweep on Apple silicon.** k ∈ {0, 1, 2, 3, 4, 6, 8}, bf16, the 16-request workload, batch sizes 1 and 6, 3 interleaved repeats after warm-up. Record wall-clock, steps, tokens per target pass, acceptance and whether the output matches plain greedy decoding. *Done:* `infviz sweep` exists and its results are committed under `results/sweep/`.
-2. **The same sweep on a GPU.** *(Notebook ready; waiting on a Colab run.)* The Colab notebook runs `infviz sweep` on a T4 or L4 and downloads one results file. *Done:* a GPU results file is committed next to the MPS one.
-3. ✓ **Break-even figure and a new §4.** *(Gains a GPU series when item 2 lands.)* A chart generated from the committed results: wall-clock speed-up against k, per device and batch size, with the 1.0 line marked. *Done:* §4 cites the figure, not the anecdote.
+2. ✓ **The same sweep on a GPU.** *(Done on an L4 via the Colab CLI; the notebook itself has still not been run end to end.)* The Colab notebook runs `infviz sweep` on a T4 or L4 and downloads one results file. *Done:* a GPU results file is committed next to the MPS one.
+3. ✓ **Break-even figure and a new §4.** A chart generated from the committed results: wall-clock speed-up against k, per device and batch size, with the 1.0 line marked. *Done:* §4 cites the figure, not the anecdote.
 4. ✓ **Prior-art check** on trace-driven KV-cache and speculation visualizers, before any "no one does this" claim. *Done:* the README names what exists and what infviz adds.
 
 ## B · Debugger upgrades
