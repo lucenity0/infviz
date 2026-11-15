@@ -417,7 +417,8 @@ def make_chip(x, y, text, kind, text_all) -> tuple[str, float]:
 
 
 # --------------------------------------------------------------------- architecture
-STAGES = 9.0  # seconds per animated engine step
+SLOW = 2.0  # time stretch for the architecture animation (chips must be readable in flight)
+STAGES = 9.0 * SLOW  # seconds per animated engine step
 
 
 def arch() -> str:
@@ -476,7 +477,7 @@ def arch() -> str:
         ("verify", "model.py · 1.5B", ["one ragged pass:", "prefill + verify", "k+1 logits a lane"]),
         ("commit", "engine.py · _commit", ["accept prefix + 1", "roll back the rest", "finish · release"]),
     ]
-    times = [(0.3, 1.4), (1.4, 2.6), (2.6, 3.9), (3.9, 5.1), (5.1, 6.3)]
+    times = [(a * SLOW, b * SLOW) for a, b in ((0.3, 1.4), (1.4, 2.6), (2.6, 3.9), (3.9, 5.1), (5.1, 6.3))]
     cx = [x0 + i * (bw + gap) + bw / 2 for i in range(5)]
     for i, ((title, file, lines), hl) in enumerate(zip(stages, times)):
         x = x0 + i * (bw + gap)
@@ -514,7 +515,7 @@ def arch() -> str:
     bw2, gap2, by = 222, 22, 790
     for i, (title, file, lines) in enumerate(bstages):
         x = 40 + i * (bw2 + gap2)
-        box(x, by, bw2, 132, title, file, lines, (6.5 + i * 0.4, 7.4 + i * 0.25))
+        box(x, by, bw2, 132, title, file, lines, ((6.5 + i * 0.4) * SLOW, (7.4 + i * 0.25) * SLOW))
         if i:
             wire(f"M{x - gap2 + 3},{by + 66} H{x - 3}")
     chan = 722
@@ -530,8 +531,9 @@ def arch() -> str:
     ev = [("req_admit", req, 1, 0.9), ("block_alloc", req, 1, 1.5), ("draft_propose", req, 2, 3.0),
           ("verify", INK, 3, 4.4), ("kv_rollback", DISCARD, 4, 5.2), ("token", req, 4, 5.8)]
     for label, color, stage, t0 in ev:
-        packet(f"M{cx[stage]},{y0 + bh} V{bus} H1002 V{sy + 20}", label, color, t0, t0 + 1.0)
-        packet(f"M877,{sy + 166} V{chan} H200 V{by + 10}", label, color, t0 + 1.0, t0 + 2.0)
+        t0 *= SLOW
+        packet(f"M{cx[stage]},{y0 + bh} V{bus} H1002 V{sy + 20}", label, color, t0, t0 + SLOW)
+        packet(f"M877,{sy + 166} V{chan} H200 V{by + 10}", label, color, t0 + SLOW, t0 + 2 * SLOW)
     css = font_css("".join(text_all) + "ARCHITECTURE")
     return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" '
             f'aria-label="Architecture: requests are scheduled, drafted, verified and committed by the engine over a paged KV cache; '
