@@ -158,6 +158,7 @@ interface Req {
   seq: number[]; gen: number; kv: number; dkv: number; tb: number[]; db: number[];
   status: 'future' | 'waiting' | 'running' | 'finished';
   needsPrefill: boolean; admitOrder: number;
+  out: string; arrivedAt: number;
 }
 const reqs: Req[] = QA.map((qa, i) => {
   const promptText = SYS[qa.sys] + '\n\nUser: ' + qa.q + '\nAssistant:';
@@ -165,7 +166,7 @@ const reqs: Req[] = QA.map((qa, i) => {
   return {
     rid: i, arriveStep: ARRIVE[i], promptText, promptIds: ids, script: tokenize(' ' + qa.a),
     maxNew: qa.maxNew, p: qa.p, seq: ids.slice(), gen: 0, kv: 0, dkv: 0, tb: [], db: [],
-    status: 'future', needsPrefill: true, admitOrder: 0,
+    status: 'future', needsPrefill: true, admitOrder: 0, out: '', arrivedAt: 0,
   };
 });
 let waiting: Req[] = [];
@@ -271,13 +272,19 @@ const hist = new Map<number, number>();
 function snapshot() {
   const pool = (p: Pool) => ({ blocks: p.blocks.map((b) => ({ state: b.state, owners: b.owners.slice().sort((a, c) => a - c), filled: b.filled })) });
   const seqs: Record<string, { kv_len: number; n_generated: number }> = {};
-  for (const r of reqs) if (r.status === 'waiting' || r.status === 'running') seqs[String(r.rid)] = { kv_len: r.kv, n_generated: r.gen };
+  const meta: Record<string, { prompt_text: string; prompt_len: number; max_new_tokens: number; arrive_step: number; out: string }> = {};
+  for (const r of reqs)
+    if (r.status === 'waiting' || r.status === 'running') {
+      seqs[String(r.rid)] = { kv_len: r.kv, n_generated: r.gen };
+      meta[String(r.rid)] = { prompt_text: r.promptText, prompt_len: r.promptIds.length, max_new_tokens: r.maxNew, arrive_step: r.arrivedAt, out: r.out };
+    }
   emit('snapshot', {
     pools: { target: pool(T), draft: pool(D) },
     waiting: waiting.map((r) => r.rid),
     running: running.map((r) => r.rid),
     finished: finished.slice(),
     seqs,
+    reqs: meta,
   });
 }
 
@@ -290,6 +297,7 @@ emit('config', {
 function commitToken(r: Req, text: string) {
   r.seq.push(tokId(text));
   r.gen++;
+  r.out += text;
   emit('token', { rid: r.rid, token: tokId(text), text });
 }
 function finish(r: Req, reason: 'eos' | 'length') {
@@ -312,6 +320,7 @@ while (reqs.some((r) => r.status !== 'finished') && guard++ < 5000) {
   for (const r of reqs) {
     if (r.status === 'future' && r.arriveStep <= stepNo) {
       r.status = 'waiting';
+      r.arrivedAt = stepNo;
       waiting.push(r);
       emit('req_arrive', { rid: r.rid, prompt_text: r.promptText, prompt_len: r.promptIds.length, max_new_tokens: r.maxNew });
     }

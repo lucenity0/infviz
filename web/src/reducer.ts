@@ -60,6 +60,8 @@ export interface ReqInfo {
   spec: SpecRound | null;
   /** true when we never saw req_arrive (joined a live stream mid-flight) */
   stub: boolean;
+  /** output text that existed when we joined (from a snapshot): its provenance is unknown */
+  joinedText: string;
 }
 
 export interface RollbackMarker {
@@ -152,6 +154,7 @@ function stubReq(rid: number, step: number): ReqInfo {
     accHist: [],
     spec: null,
     stub: true,
+    joinedText: '',
   };
 }
 
@@ -419,12 +422,16 @@ function hydrate(s: State, ev: SnapshotEvent): State {
       const t = status === 'finished' ? { slots: n.slots, slot: -1 } : takeSlot(n, rid);
       const cur = n.reqs[rid] ?? stubReq(rid, ev.step);
       const seq = ev.seqs[String(rid)];
+      const meta = ev.reqs?.[String(rid)];
+      const known = meta
+        ? { prompt_text: meta.prompt_text, prompt_len: meta.prompt_len, max_new_tokens: meta.max_new_tokens, arriveStep: meta.arrive_step, out: meta.out, joinedText: meta.out, stub: false }
+        : {};
       n = {
         ...n,
         slots: t.slots,
         reqs: {
           ...n.reqs,
-          [rid]: { ...cur, status, slot: t.slot, colorSlot: t.slot >= 0 ? t.slot : cur.colorSlot, nTokens: seq ? seq.n_generated : cur.nTokens },
+          [rid]: { ...cur, ...known, status, slot: t.slot, colorSlot: t.slot >= 0 ? t.slot : cur.colorSlot, nTokens: seq ? seq.n_generated : cur.nTokens },
         },
       };
     }

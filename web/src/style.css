@@ -796,6 +796,12 @@ input:focus-visible {
 .tt {
   color: var(--ink);
 }
+/* text from before a live join: provenance unknown */
+.tj {
+  color: var(--ink-2);
+  text-decoration: underline dotted var(--ink-3);
+  text-underline-offset: 3px;
+}
 .ikey .td,
 .ikey .tt {
   padding: 0 3px;

@@ -85,6 +85,11 @@ the block stays `used`.
 ### Snapshots
 - `snapshot` — full state *after* all preceding events. Emitted every
   `snapshot_every` steps (after `step_end`) and as the last event of a trace.
+  Optional `reqs: {"<rid>": {prompt_text, prompt_len, max_new_tokens, arrive_step, out}}`
+  carries the unfinished requests' metadata (`out` = output text committed so far), so a
+  browser that joins a live stream late still knows their prompts and text. It is
+  **outside** the honesty invariant: reducers use it only to hydrate a late join, and
+  traces recorded before it existed simply lack it.
   ```
   {pools: {target: {blocks: [{state: "free"|"used"|"cached", owners: int[], filled: int}]},
            draft?:  {...same...}},

@@ -144,6 +144,9 @@ export interface SnapshotEvent extends Base {
   running: number[];
   finished: number[];
   seqs: Record<string, { kv_len: number; n_generated: number }>;
+  /** unfinished requests' metadata, for a late joiner. Optional (older traces lack it) and
+   *  outside the honesty invariant. `out` = the output text committed so far. */
+  reqs?: Record<string, { prompt_text: string; prompt_len: number; max_new_tokens: number; arrive_step: number; out: string }>;
 }
 
 export type InfvizEvent =

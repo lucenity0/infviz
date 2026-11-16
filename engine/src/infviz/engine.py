@@ -42,6 +42,7 @@ class Request:
     text: str = ""
     prefilled: bool = False
     done: bool = False
+    arrive_step: int = 0
 
     @property
     def all(self) -> list[int]:
@@ -228,6 +229,7 @@ class Engine:
                 r = self.inbox.get_nowait()
             except queue.Empty:
                 return
+            r.arrive_step = self.em.step
             self.reqs[r.rid] = r
             self.waiting.append(r.rid)
             self.em.emit("req_arrive", rid=r.rid, prompt_text=r.prompt_text,
@@ -377,8 +379,16 @@ class Engine:
             str(rid): {"kv_len": self.tpool.kv_len(rid), "n_generated": len(self.reqs[rid].output)}
             for rid in list(self.waiting) + self.running
         }
+        # request metadata for a late joiner (unfinished requests only; outside the honesty
+        # invariant): what it would otherwise have learned from req_arrive and token events
+        reqs = {
+            str(rid): {"prompt_text": r.prompt_text, "prompt_len": len(r.prompt_ids),
+                       "max_new_tokens": r.max_new, "arrive_step": r.arrive_step, "out": r.text}
+            for rid in list(self.waiting) + self.running
+            for r in (self.reqs[rid],)
+        }
         return {"pools": pools, "waiting": list(self.waiting), "running": list(self.running),
-                "finished": list(self.finished), "seqs": seqs}
+                "finished": list(self.finished), "seqs": seqs, "reqs": reqs}
 
     def check(self) -> None:
         self.tpool.check()

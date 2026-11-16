@@ -78,7 +78,7 @@ The acceptance histogram has two peaks, at **0 and at all 4**. The draft model i
 - **It debugs this engine, not yours.** infviz reads its own event protocol. It will not attach to vLLM or llama.cpp, and it will not profile a production server.
 - **Small models, greedy only.** Qwen2.5 0.5B → 1.5B by default (the sweep also ran a 7B target), with no temperature or sampling yet. Acceptance under sampling will differ.
 - **"Lossless" is proven in fp32.** In fp32, speculative output is identical to plain greedy decoding (tests below). In bf16, the default, they diverge: in the sweeps, 4 to 8 of the 16 responses differed from plain greedy decoding somewhere, on both machines and both targets, with the same count on every repeat. The likely cause is that a pass over k + 1 tokens rounds differently from one-token decoding, which flips near-ties.
-- **Joining late loses prompts.** A browser that connects mid-run gets the cache state from a snapshot, but not the prompt text of requests that were already running.
+- **Joining late loses provenance, not text.** A browser that connects mid-run gets the cache, queues and each running request's prompt and output so far from a snapshot. Which model wrote the text generated before it joined is unknown, and the inspector marks that text as such.
 
 ---
 

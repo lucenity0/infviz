@@ -92,10 +92,10 @@ export class InspectPanel {
     const facts = [
       fact('Prompt', `${r.prompt_len}<span class="dim"> tok</span>`),
       fact('Output', `${r.nTokens}<span class="dim">/${r.max_new_tokens}</span>`),
-      fact('Prefix reused', tr.prefixHits ? `${tr.prefixHits * bs}<span class="dim"> tok</span>` : '0',
+      fact('Prefix reused', tr.prefixHits ? `${tr.prefixHits * bs}<span class="dim"> tok</span>` : r.joinedText ? '—' : '0',
         `prefix`),
       fact('Arrived', String(r.arriveStep)),
-      fact('Admitted', r.admitSteps.join(', ') || '—'),
+      fact('Admitted', r.admitSteps.join(', ') || (r.joinedText && r.status === 'running' ? '<span class="dim">before you joined</span>' : '—')),
       fact(r.finishStep !== null ? 'Finished' : 'Preempted', r.finishStep !== null ? String(r.finishStep) : r.preemptSteps.join(', ') || '—', r.finishStep !== null ? '' : 'preempt'),
     ];
     if (k > 0)
@@ -121,7 +121,9 @@ export class InspectPanel {
               : `step ${t.step} · target's own token`;
       resp += `<span class="${cls}" title="${esc(title)}">${esc(t.text)}</span>`;
     }
-    if (!tr.tokens.length) resp = `<span class="dim">${r.status === 'waiting' ? 'Not admitted yet.' : 'Prefill in progress.'}</span>`;
+    if (r.joinedText)
+      resp = `<span class="tj" title="Generated before this page joined the live stream: which model wrote it is unknown">${esc(r.joinedText)}</span>` + resp;
+    if (!tr.tokens.length && !r.joinedText) resp = `<span class="dim">${r.status === 'waiting' ? 'Not admitted yet.' : 'Prefill in progress.'}</span>`;
 
     // per-round acceptance strip: solid = accepted, hatched red = drafts discarded
     let strip = '';
@@ -151,7 +153,7 @@ export class InspectPanel {
             : ''
         }</div>
           <div class="resp">${resp}</div>
-          ${k > 0 && tr.tokens.length ? `<div class="share num">${drafted} of ${tr.tokens.length} tokens came from the draft model</div>` : ''}</div>
+          ${k > 0 && tr.tokens.length ? `<div class="share num">${drafted} of ${tr.tokens.length} tokens${r.joinedText ? ' since you joined' : ''} came from the draft model</div>` : ''}${r.joinedText ? `<div class="share">Dotted text was generated before this page joined; its provenance is unknown.</div>` : ''}</div>
         ${strip}
       </div>`;
   }
