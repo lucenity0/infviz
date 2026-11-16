@@ -8,7 +8,7 @@ infviz is a small, honest inference engine that **emits every one of those decis
 
 > **The short version.** On Qwen2.5-1.5B with a 0.5B draft model, the engine runs paged attention, prefix caching, continuous batching and speculative decoding. In fp32 its output is verified token for token against Hugging Face transformers and against plain greedy decoding. Every number on screen is rebuilt from events, and a test checks that rebuild against the engine's own snapshots. It is a tool for seeing and explaining serving, not a production profiler.
 
-**[The idea](#1--the-idea)** · **[What you see](#2--what-you-see)** · **[A real run](#3--a-real-run)** · **[Limits](#4--where-it-does-not-help)** · **[Run it](#5--run-it)** · **[Repository map](#7--repository-map)**
+**[Live demo](https://infviz.lucenity.dev)** · **[The idea](#1--the-idea)** · **[What you see](#2--what-you-see)** · **[A real run](#3--a-real-run)** · **[Limits](#4--where-it-does-not-help)** · **[Run it](#5--run-it)** · **[Repository map](#7--repository-map)**
 
 ---
 
@@ -92,7 +92,7 @@ uv run infviz serve                      # live engine + WebSocket on :8000 (fir
 cd web && npm install && npm run dev     # http://localhost:5173
 ```
 
-Click **Engine** in the transport bar and pick a preset (it restarts the engine with those settings and sends a burst of requests), or type a prompt and **Send**. Without an engine, the page replays the bundled trace, and `npm run build` produces a static site that does the same with no server.
+Click **Engine** in the transport bar and pick a preset (it restarts the engine with those settings and sends a burst of requests), or type a prompt and **Send**. Without an engine, the page replays the bundled trace, and `npm run build` produces a static site that does the same with no server. That static site is what [infviz.lucenity.dev](https://infviz.lucenity.dev) serves: `.github/workflows/pages.yml` builds it with `VITE_STATIC=1` and publishes it to GitHub Pages on every push.
 
 ```bash
 uv run infviz record --out ../traces/run.jsonl -n 24 --blocks 40     # record a run headless

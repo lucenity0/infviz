@@ -20,7 +20,7 @@ What comes next for infviz, in the order it will be done. Each item says why it 
 
 ## C · Sharing
 
-9. **Hosted replay and a GIF in the first screen of the README.** The static build replays the bundled trace with no server (and carries no licensed font). Published only with the owner's go-ahead.
+9. ✓ **Hosted replay.** [infviz.lucenity.dev](https://infviz.lucenity.dev): the static build on GitHub Pages, deployed on every push, with a 1.5 s opening and no licensed font. (The README's animated hero already does the job a GIF would have.)
 10. **A visual key for §2,** replacing the prose legend table with a small labelled image.
 
 ## D · Known gaps
