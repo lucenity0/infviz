@@ -34,3 +34,21 @@ Predictions for the full sweep (16 requests, k 0–8, batch 1 and 6, three repea
 1. k = 1 or k = 2 is the best setting at both batch sizes, at about 1.05–1.15×, and these are the only settings above 1.0×.
 2. k = 4 lands near 0.83× and k ≥ 6 below that.
 3. With the full run's own tok/pass and per-pass costs plugged in, the cost model is within ±10% of every measured speed-up.
+
+### Outcome (full sweep, same day, NVIDIA L4, torch 2.14.1+cu130, Qwen2.5-7B-Instruct ← Qwen2.5-0.5B-Instruct)
+
+42 rows, no evictions or preemptions, repeats within about 1%. Per-pass costs: plain decode step 61.2 ms (batch 1) and 67.3 ms (batch 6); draft pass 26.9–28.5 ms, a ratio of 0.42–0.45; verify step 63.4–71.6 ms.
+
+| k | 0 | 1 | 2 | 3 | 4 | 6 | 8 |
+|---|---|---|---|---|---|---|---|
+| speed-up, batch 1 | 1.00 | **1.09** | 1.07 | 0.96 | 0.89 | 0.70 | 0.60 |
+| cost model, batch 1 | | 1.10 | 1.09 | 0.98 | 0.91 | 0.73 | 0.63 |
+| speed-up, batch 6 | 1.00 | **1.17** | 1.13 | 0.97 | 0.94 | 0.78 | 0.62 |
+| cost model, batch 6 | | 1.15 | 1.11 | 0.99 | 0.92 | 0.76 | 0.64 |
+| tok/pass (both) | 1.00 | 1.64 | 2.09–2.10 | 2.30–2.32 | 2.51–2.55 | 2.72–2.74 | 2.83–2.88 |
+
+1. **Met, with one point just outside the range.** k = 1 is the best setting at both batch sizes and only k = 1 and 2 are above 1.0×. Batch 6 at k = 1 measured 1.17×, slightly above the predicted 1.05–1.15×.
+2. **Missed for k = 4.** Predicted near 0.83×, measured 0.89× and 0.94×: the full workload's tok/pass at k = 4 (2.51–2.55) was higher than the smoke run's (2.31–2.33). k ≥ 6 is below k = 4, as predicted.
+3. **Met.** With each run's own tok/pass and per-pass costs, the cost model is within 5.0% of every measured speed-up (largest gaps at k = 6 and 8, where it is optimistic).
+
+In bf16, 4 to 8 of the 16 responses differed from the k = 0 run somewhere, as with the 1.5B target.

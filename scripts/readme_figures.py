@@ -637,8 +637,8 @@ def breakeven() -> str:
     body.append(f'<rect x="0.5" y="0.5" width="{W - 1}" height="{H - 1}" fill="none" stroke="{HAIR}"/>')
     body.append(t(34, 62, "Does speculation pay for itself?", 40, INK, SANS, weight=300, ls=-0.5))
     dts = sorted({d["dtype"] for d in data})
-    body.append(t(36, 96, "Wall-clock tokens per second against plain decoding (k = 0), same 16 requests, "
-                  f"all arriving at once, no KV eviction, {'/'.join(dts)}, 0.5B draft.", 16, INK3))
+    body.append(t(36, 96, "Wall-clock tokens/s against plain decoding (k = 0): 16 requests arriving at once, "
+                  f"no eviction, {'/'.join(dts)}, 0.5B draft.", 16, INK3))
     # legend: devices
     lx = 36
     for i, d in enumerate(data):
@@ -673,6 +673,7 @@ def breakeven() -> str:
             body.append(t(x0 - 14, yb + 21, "break-even", 12, INK3, anchor="end"))
         body.append(t(x0 + 8, Y(y0) - 10, "below the dashed line: slower than plain decoding", 12, INK3))
         # series
+        labels: list = []
         for di, d in enumerate(data):
             pts = [(xs[k], Y(d["cells"][(b, k)]["speedup"]), d["cells"][(b, k)]) for k in ks if (b, k) in d["cells"]]
             col = MARK[min(di, len(MARK) - 1)]
@@ -688,8 +689,18 @@ def breakeven() -> str:
             bx_, by_ = xs[bk], Y(d["cells"][(b, bk)]["speedup"])
             others = [o["cells"][(b, bk)]["speedup"] for o in data if o is not d and (b, bk) in o["cells"]]
             above = not others or d["cells"][(b, bk)]["speedup"] >= max(others)
-            body.append(t(bx_, by_ - 14 if above else by_ + 26, f"{d['cells'][(b, bk)]['speedup']:.2f}×", 14,
-                          MARK[min(di, len(MARK) - 1)] if di < 2 else INK2, anchor="middle", weight=500))
+            labels.append([bx_, by_ - 14 if above else by_ + 26, f"{d['cells'][(b, bk)]['speedup']:.2f}×",
+                           MARK[min(di, len(MARK) - 1)] if di < 2 else INK2])
+        # resolve label collisions: walk top to bottom, push any overlapping label down
+        labels.sort(key=lambda L: L[1])
+        for i in range(1, len(labels)):
+            for j in range(i):
+                a, c = labels[j], labels[i]
+                if abs(a[0] - c[0]) < 52 and c[1] - a[1] < 18:
+                    c[1] = a[1] + 18
+        for lx_, ly_, txt, col in labels:
+            body.append(t(lx_, ly_, txt, 14, col, anchor="middle", weight=500,
+                          extra=f' paint-order="stroke" stroke="{BG}" stroke-width="5" stroke-linejoin="round"'))
         # x axis + tok/pass row (first device)
         for k in ks:
             body.append(t(xs[k], top1 + h1 + 26, f"k {k}", 14, INK2, anchor="middle"))
@@ -736,7 +747,7 @@ def breakeven() -> str:
     # key for the bars
     ky = top2 + h2 + 66
     kx = 36
-    for label, fill in (("verify pass + commit (1.5B target)", INK2), ("draft passes (0.5B draft)", INK4)):
+    for label, fill in (("verify pass + commit (target model)", INK2), ("draft passes (0.5B draft)", INK4)):
         body.append(f'<rect x="{kx}" y="{ky - 11}" width="14" height="14" fill="{fill}"/>')
         body.append(t(kx + 22, ky + 1, label, 14, INK3, SANS))
         kx += 22 + len(label) * 7.4 + 40
