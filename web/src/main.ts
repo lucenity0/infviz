@@ -10,6 +10,7 @@ import { StatusStrip } from './panels/status';
 import { TimelinePanel } from './panels/timeline';
 import { Player } from './player';
 import { selection } from './select';
+import { showSplash } from './splash';
 import { applyTokens } from './tokens';
 import { Transport } from './transport';
 import { reduceMotion } from './ui';
@@ -21,6 +22,11 @@ const poster = new URLSearchParams(location.search).has('poster');
 if (new URLSearchParams(location.search).get('theme') === 'light')
   (document.getElementById('b-compare') as HTMLAnchorElement).href = 'compare.html?theme=light';
 if (poster) document.documentElement.classList.add('poster');
+const STATIC = (import.meta as unknown as { env?: { VITE_STATIC?: string } }).env?.VITE_STATIC === '1';
+const splash =
+  poster || new URLSearchParams(location.search).has('nosplash')
+    ? null
+    : showSplash('KV cache · continuous batching · speculative decoding');
 let markLoaded: () => void = () => {};
 const loaded = new Promise<void>((r) => (markLoaded = r));
 
@@ -148,7 +154,8 @@ async function boot() {
       toast(`Could not load trace ${traceUrl}: ${e}`);
     }
   }
-  if (!params.has('nolive') && !poster) {
+  // a hosted (static) build has no engine to find: go straight to the replay
+  if (!params.has('nolive') && !poster && !STATIC) {
     status.conn = 'connecting';
     kv.setOverlay('loading');
     if (await connect(true)) {
@@ -217,7 +224,7 @@ function renderAt(pos: number) {
   renderAll();
 }
 matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', () => (player.stepwise = reduceMotion()));
-boot();
+boot().finally(() => splash?.finish());
 
 const ready = Promise.all([loaded, fontsReady]).then(() => renderAll());
 (window as unknown as { infviz: unknown }).infviz = { player, selection, renderAt, ready, spec };

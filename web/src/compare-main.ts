@@ -7,6 +7,7 @@ import { fontsReady } from './fonts';
 import { AbTimeline, abRun, type AbRun } from './panels/abtimeline';
 import { KvPanel } from './panels/kv';
 import { Player } from './player';
+import { showSplash } from './splash';
 import { applyTokens } from './tokens';
 import { esc, outlined, reduceMotion, shortModel } from './ui';
 
@@ -63,6 +64,15 @@ function statsHtml(a: RunSummary, b: RunSummary, device: string): string {
 }
 
 async function main() {
+  const splash = poster || q.has('nosplash') ? null : showSplash('two runs · one wall clock');
+  try {
+    await run();
+  } finally {
+    splash?.finish();
+  }
+}
+
+async function run() {
   const fa = q.get('a') ?? 'ab-plain.jsonl';
   const fb = q.get('b') ?? 'ab-spec.jsonl';
   let A: InfvizEvent[], B: InfvizEvent[];

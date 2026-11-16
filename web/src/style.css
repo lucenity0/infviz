@@ -1291,3 +1291,133 @@ svg.ol {
   fill: currentColor;
   overflow: visible;
 }
+
+/* ---------- opening splash (src/splash.ts) ---------- */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  transition: opacity 260ms ease-out;
+}
+.splash.out {
+  opacity: 0;
+  pointer-events: none;
+}
+.sp-in {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+}
+.sp-mark {
+  font-size: 46px;
+  line-height: 1;
+  color: var(--ink);
+}
+.sp-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), 22px);
+  gap: 6px;
+}
+.sp-grid .b {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  width: 22px;
+  height: 22px;
+}
+.sp-grid .c {
+  background: var(--ink-4);
+  opacity: 0.55;
+}
+/* a cell fills like in the KV panel: a brief ink flash, then its request's hue */
+.sp-grid .c.on {
+  animation: sp-fill 140ms ease-out var(--d) both;
+}
+/* the last speculative cells are rolled back: discard hatch, then free again */
+.sp-grid .c.on.rb {
+  animation:
+    sp-fill 140ms ease-out var(--d) both,
+    sp-rb 380ms linear 1080ms forwards;
+}
+@keyframes sp-fill {
+  from {
+    background: var(--ink-4);
+    opacity: 0.55;
+  }
+  45% {
+    background: var(--ink);
+    opacity: 1;
+  }
+  to {
+    background: var(--h);
+    opacity: 1;
+  }
+}
+@keyframes sp-rb {
+  0%,
+  70% {
+    background: repeating-linear-gradient(135deg, var(--discard) 0 1.2px, transparent 1.2px 3.5px);
+    opacity: 1;
+  }
+  to {
+    background: var(--ink-4);
+    opacity: 0.55;
+  }
+}
+.sp-cap {
+  font: 500 var(--t-micro) / 1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.sp-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--hair);
+}
+.sp-bar i {
+  display: block;
+  height: 100%;
+  background: var(--ink);
+  transform-origin: left;
+  animation: sp-bar var(--t) linear both;
+}
+@keyframes sp-bar {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.splash.still * {
+  animation: none !important;
+}
+.splash.still .c.on {
+  background: var(--h);
+  opacity: 1;
+}
+.splash.still .sp-bar i {
+  transform: scaleX(1);
+}
+@media (max-width: 420px) {
+  .sp-grid {
+    grid-template-columns: repeat(var(--cols), 16px);
+    gap: 4px;
+  }
+  .sp-grid .b {
+    width: 16px;
+    height: 16px;
+  }
+  .sp-mark {
+    font-size: 38px;
+  }
+}

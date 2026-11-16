@@ -65,7 +65,7 @@ const a = args(process.argv.slice(2));
 const server = await createServer({ root, logLevel: 'error', server: { port: 0, strictPort: false } });
 await server.listen();
 const base = server.resolvedUrls.local[0];
-const q = new URLSearchParams({ theme: a.theme });
+const q = new URLSearchParams({ theme: a.theme, nosplash: '1' });
 if (!a.full) q.set('poster', '1'); // --full keeps the transport bar (a screenshot of the whole app)
 let url;
 if (a.page === 'compare') {
