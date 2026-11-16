@@ -2,10 +2,13 @@
 
 Run:  cd engine && uv run pytest -q          (all)
       uv run pytest -q -m "not models"       (pure bookkeeping only, instant)
+      INFVIZ_TEST_PAIR=smollm2 uv run pytest -q -m models   (the same model tests on the
+                                             Llama-architecture SmolLM2 135M -> 360M pair)
 """
 from __future__ import annotations
 
 import gc
+import os
 import random
 
 import pytest
@@ -15,7 +18,12 @@ from infviz.events import Emitter
 from infviz.kv import BlockPool
 from infviz.replay import check_events
 
-TARGET, DRAFT = "Qwen/Qwen2.5-1.5B-Instruct", "Qwen/Qwen2.5-0.5B-Instruct"
+PAIRS = {
+    "qwen": ("Qwen/Qwen2.5-1.5B-Instruct", "Qwen/Qwen2.5-0.5B-Instruct"),
+    "smollm2": ("HuggingFaceTB/SmolLM2-360M-Instruct", "HuggingFaceTB/SmolLM2-135M-Instruct"),
+}
+TARGET, DRAFT = PAIRS[os.environ.get("INFVIZ_TEST_PAIR", "qwen")]
+PARITY_TOL = 5e-4  # max |logit difference| vs Hugging Face transformers, fp32 (measured 1.1-1.6e-4 on MPS)
 DEV = "mps" if torch.backends.mps.is_available() else ("cuda" if torch.cuda.is_available() else "cpu")
 PROMPTS = [
     "Explain what a KV cache is in two sentences.",
@@ -106,7 +114,9 @@ def test_paged_forward_matches_transformers_teacher_forced(model):
         ref = hf(torch.tensor([full], device=DEV)).logits[0].float().cpu()
     del hf
     gc.collect()
-    assert (ref - mine).abs().max() < 1e-2
+    diff = (ref - mine).abs().max().item()
+    print(f"\n{model}: max |logit diff| vs transformers = {diff:.2e} over {len(full)} positions")
+    assert diff < PARITY_TOL
     assert torch.equal(ref.argmax(-1), mine.argmax(-1))
 
 
