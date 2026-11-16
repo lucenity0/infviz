@@ -34,11 +34,15 @@ infviz is a small, honest inference engine that **emits every one of those decis
   <img src="assets/ui-dark.png" alt="The infviz debugger at step 30: KV cache pools with shared-prefix blocks and rolled-back cells, speculation lanes with accepted and rejected drafts, the current step narrated in the transport bar, and the timeline with one playhead." width="100%">
 </p>
 
+<p align="center">
+  <img src="assets/key.svg" alt="Visual key. KV cache: owned blocks in a request's colour, shared prompt prefixes as stacked grey blocks, cached blocks dark grey, free cells faint, discarded speculative cells in red hatching. Speculation: a dashed chip is a draft guess, solid is accepted, red hatched is the first rejection, struck is dropped after it, outlined is the target's own token. Timeline: dotted line waiting, solid block prefill, bars decode with height = tokens committed, red cross preempted, a vertical line is the playhead." width="100%">
+</p>
+
 | Panel | What it shows | How to read it |
 |---|---|---|
-| **KV cache** | Both block pools at the playhead | colour = owned by that request · stacked grey = prompt prefix shared by several requests · dark grey = cached for reuse · empty = free · red hatching = speculative KV discarded · dissolving = evicted |
-| **Speculative decoding** | The headline number and each running lane's latest round | **tok/pass** = tokens committed per target forward pass (plain decoding is 1.00; not a speed-up, see §4) · dashed = draft guess · solid = accepted · hatched red = first rejection · outlined = the target's own token |
-| **Timeline** | The whole run on one step axis, one playhead | step time · KV occupancy · accepted vs rejected drafts per step · a lane per request: dotted = waiting, block = prefill, ticks = tokens committed, × = preempted |
+| **KV cache** | Both block pools at the playhead | marks as in the key · a block that dissolves was evicted · hover a block for its owners, click it to inspect its request |
+| **Speculative decoding** | The headline number and each running lane's latest round | **tok/pass** = tokens committed per target forward pass (plain decoding is 1.00; not a speed-up, see §4) · chips as in the key |
+| **Timeline** | The whole run on one step axis, one playhead | step time · KV occupancy · accepted vs rejected drafts per step · a lane per request, marks as in the key · drag to scrub |
 | **Events** | The engine's last steps in plain language, newest first; the current step also runs along the transport bar | "r15 was preempted: the KV pool ran out of free blocks…" · click a step to jump to it · hover any label for a definition |
 | **Inspector** | One request, opened by clicking it in the timeline, a speculation lane or a KV block | its prompt and response, each token marked as drafted and accepted or the target's own, rejected guesses on demand, prefix reuse, acceptance and KV rolled back · its blocks stay bright in the KV grid · Esc closes |
 | **Compare** | Two recordings on one wall-clock axis (**Compare** in the transport bar, or `compare.html`) | the bundled pair is the same 16 requests with and without speculation · tokens committed over time · every engine step as a bar, wide for slow steps and tall for many tokens · the two KV caches side by side · a table of B against A |
@@ -131,8 +135,8 @@ cd web && npx vitest run && TRACE=public/demo.jsonl npx vitest run
 | [`docs/EVENTS.md`](docs/EVENTS.md) | The event protocol both halves agree on |
 | [`notebooks/`](notebooks) | The speculation sweep and trace recording on a Colab GPU |
 | [`results/sweep/`](results/sweep) | Raw sweep rows, one JSON line per run, with device, dtype and torch version |
-| [`scripts/readme_figures.py`](scripts/readme_figures.py) | Regenerates the hero (a replay of the demo trace), the architecture diagram and the break-even chart (from `results/sweep/`) |
-| [`assets/`](assets) | `hero.svg`, `architecture.svg` (animated), `breakeven.svg` and the UI screenshot |
+| [`scripts/readme_figures.py`](scripts/readme_figures.py) | Regenerates the hero (a replay of the demo trace), the architecture diagram, the break-even chart (from `results/sweep/`) and the visual key |
+| [`assets/`](assets) | `hero.svg`, `architecture.svg` (animated), `breakeven.svg`, `key.svg` and the UI screenshot |
 | [`traces/`](traces) | Your recordings (git-ignored) |
 
 ---

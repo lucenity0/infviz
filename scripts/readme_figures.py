@@ -13,6 +13,8 @@ assets/breakeven.svg     the speculation sweep (results/sweep/*.jsonl): wall-clo
                          plain decoding against k, per device and batch size, and where the
                          time per token goes (draft vs verify passes).
 
+assets/key.svg           the README §2 key: every mark on screen, drawn as the app draws it.
+
 Pass figure names to regenerate only some: `... readme_figures.py breakeven`.
 
 Colours are read from web/src/tokens.ts. Only open-licence fonts (Geist Mono, Inter Tight)
@@ -420,6 +422,107 @@ def make_chip(x, y, text, kind, text_all) -> tuple[str, float]:
     return r + T(x + 7, y + 17, s, size, fill), w
 
 
+# --------------------------------------------------------------------- visual key
+def key() -> str:
+    """README §2: every mark on screen, drawn the way the app draws it, with its meaning."""
+    W, H = 1280, 404
+    body: list[str] = []
+    text_all: list[str] = []
+
+    def t(*a, **k):
+        text_all.append(str(a[2]))
+        return T(*a, **k)
+
+    body.append(f'<rect width="{W}" height="{H}" fill="{BG}"/>')
+    body.append(f'<rect x="0.5" y="0.5" width="{W - 1}" height="{H - 1}" fill="none" stroke="{HAIR}"/>')
+    cols = [(36, "KV CACHE · ONE BLOCK = 16 TOKENS"), (468, "SPECULATION · ONE ROUND"), (880, "TIMELINE · ONE LANE PER REQUEST")]
+    for x, head in cols:
+        body.append(t(x, 46, head, 13, INK3, ls=1.4))
+    for x in (444, 856):
+        body.append(f'<line x1="{x}" y1="24" x2="{x}" y2="{H - 24}" stroke="{HAIR}"/>')
+    row_y = [92, 154, 216, 278, 340]
+
+    def label(x, y, main, sub):
+        body.append(t(x, y - 4, main, 16, INK, SANS, weight=500))
+        body.append(t(x, y + 17, sub, 12.5, INK3))
+
+    # ---- KV cells: a 4 x 4 block exactly like the panel's
+    C, G = 9, 2
+
+    def block(x, y, fills, ghosts=0, strip=None, head=False):
+        if ghosts:
+            for j in range(ghosts, 0, -1):
+                o = j * 4
+                body.append(f'<rect x="{x + o + .5}" y="{y - o + .5}" width="{4 * C + 3 * G - 1}" height="{4 * C + 3 * G - 1}" '
+                            f'fill="{BG}" stroke="{INK3}" stroke-opacity="{0.55 - j * 0.1:.2f}"/>')
+        for k, f in enumerate(fills):
+            cx, cy = x + (k % 4) * (C + G), y + (k // 4) * (C + G)
+            op = ' fill-opacity="0.55"' if f == INK4 else ""
+            body.append(f'<rect x="{cx}" y="{cy}" width="{C}" height="{C}" fill="{f}"{op}/>')
+        if strip:
+            seg = (4 * C + 3 * G) / len(strip)
+            for j, c in enumerate(strip):
+                body.append(f'<rect x="{x + j * seg:.1f}" y="{y + 4 * C + 3 * G + 3}" width="{seg - 1:.1f}" height="2" fill="{c}"/>')
+        if head:
+            body.append(f'<rect x="{x - 4}" y="{y}" width="2" height="{4 * C + 3 * G}" fill="{fills[0]}"/>')
+
+    bx, lx = 36, 104
+    kv = [
+        (dict(fills=[REQ[0]] * 11 + [INK4] * 5, head=True), "Owned", "one request's tokens, in its colour"),
+        (dict(fills=[INK2] * 16, ghosts=2, strip=[REQ[0], REQ[1], REQ[2]]), "Shared prefix", "a prompt block several requests point at"),
+        (dict(fills=[CACHED] * 16), "Cached", "finished, kept in case a prompt repeats"),
+        (dict(fills=[INK4] * 16), "Free", "unused memory"),
+        (dict(fills=[REQ[1]] * 10 + ["url(#hz)"] * 4 + [INK4] * 2), "Discarded", "speculative KV rolled back (the only red)"),
+    ]
+    for (kw, main, sub), y in zip(kv, row_y):
+        block(bx, y - 22, **kw)
+        label(lx, y, main, sub)
+
+    # ---- speculation chips, drawn by the same helper as the hero
+    cx, clx = 468, 544
+    chips = [
+        ("draft", " the", "Draft guess", "from the small model, not yet checked"),
+        ("acc", " cat", "Accepted", "kept: the target agreed"),
+        ("rej", " dog", "Rejected", "first guess the target turned down"),
+        ("void", " sat", "Voided", "dropped after a rejection"),
+        ("fix", " ran", "Target's own", "a replacement, or a bonus token"),
+    ]
+    for (kind, word, main, sub), y in zip(chips, row_y):
+        svg, _ = make_chip(cx, y - 14, word, kind, text_all)
+        body.append(svg)
+        label(clx, y, main, sub)
+
+    # ---- timeline marks, as one lane draws them
+    tx, tlx = 880, 992
+    hue = REQ[2]
+    ys = row_y
+    # waiting: dotted
+    body.append(f'<line x1="{tx}" y1="{ys[0]}" x2="{tx + 96}" y2="{ys[0]}" stroke="{INK3}" stroke-dasharray="1.5 3"/>')
+    label(tlx, ys[0], "Waiting", "arrived, not yet in the batch")
+    # prefill: a solid block
+    body.append(f'<rect x="{tx}" y="{ys[1] - 9}" width="44" height="18" fill="{hue}"/>')
+    label(tlx, ys[1], "Prefill", "the whole prompt in one pass")
+    # decode: bars, height = tokens committed that step
+    for i, hgt in enumerate([5, 13, 18, 9, 18, 4, 12]):
+        body.append(f'<rect x="{tx + i * 14}" y="{ys[2] + 9 - hgt}" width="12" height="{hgt}" fill="{hue}"/>')
+    label(tlx, ys[2], "Decode", "bar height = tokens committed")
+    # preempted: the lane stops with a red cross
+    body.append(f'<rect x="{tx}" y="{ys[3] - 9}" width="58" height="18" fill="{hue}" fill-opacity="0.85"/>')
+    px, py = tx + 70, ys[3]
+    body.append(f'<path d="M{px - 5},{py - 5} L{px + 5},{py + 5} M{px - 5},{py + 5} L{px + 5},{py - 5}" stroke="{DISCARD}" stroke-width="2"/>')
+    label(tlx, ys[3], "Preempted", "kicked out when memory ran out")
+    # playhead
+    body.append(f'<rect x="{tx + 40}" y="{ys[4] - 16}" width="1" height="32" fill="{INK}"/>')
+    body.append(f'<rect x="{tx + 26}" y="{ys[4] - 24}" width="29" height="14" fill="{INK}"/>')
+    body.append(t(tx + 40.5, ys[4] - 13.5, "30", 11, BG, anchor="middle", weight=500))
+    label(tlx, ys[4], "Playhead", "everything shown is this moment")
+
+    css = font_css("".join(text_all))
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" role="img" '
+            f'aria-label="Visual key: KV cache cells, speculation chips and timeline marks, each with its meaning">'
+            f"<style>{css}</style><defs>{DEFS_COMMON}</defs>{''.join(body)}</svg>\n")
+
+
 # --------------------------------------------------------------------- architecture
 SLOW = 2.0  # time stretch for the architecture animation (chips must be readable in flight)
 STAGES = 9.0 * SLOW  # seconds per animated engine step
@@ -765,12 +868,13 @@ def breakeven() -> str:
 
 
 def main() -> None:
-    want = set(sys.argv[1:]) or {"hero", "architecture", "breakeven"}
+    want = set(sys.argv[1:]) or {"hero", "architecture", "breakeven", "key"}
     OUT.mkdir(exist_ok=True)
     figs = {
         "hero": lambda: hero(Replay([json.loads(line) for line in TRACE.open()])),
         "architecture": arch,
         "breakeven": breakeven,
+        "key": key,
     }
     for name in [n for n in figs if n in want]:
         svg = figs[name]()
