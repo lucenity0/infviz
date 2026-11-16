@@ -49,6 +49,8 @@ Predictions for the full sweep (16 requests, k 0–8, batch 1 and 6, three repea
 
 1. **Met, with one point just outside the range.** k = 1 is the best setting at both batch sizes and only k = 1 and 2 are above 1.0×. Batch 6 at k = 1 measured 1.17×, slightly above the predicted 1.05–1.15×.
 2. **Missed for k = 4.** Predicted near 0.83×, measured 0.89× and 0.94×: the full workload's tok/pass at k = 4 (2.51–2.55) was higher than the smoke run's (2.31–2.33). k ≥ 6 is below k = 4, as predicted.
-3. **Met.** With each run's own tok/pass and per-pass costs, the cost model is within 5.0% of every measured speed-up (largest gaps at k = 6 and 8, where it is optimistic).
+3. **Met, but weaker evidence than it looks.** With each run's own tok/pass and per-pass costs, the cost model is within 5.0% of every measured speed-up (largest gaps at k = 6 and 8, where it is optimistic). Those terms come from the same run, so this mostly checks that they account for the time; the same calculation on the 1.5B files is off by up to 13.1% (M2 Pro) and 22.5% (L4), where prefill steps and fixed costs the model leaves out weigh more. The out-of-sample evidence is the smoke-based forecast: it called the crossover correctly and ran 1–11% low at all four points it gave.
 
 In bf16, 4 to 8 of the 16 responses differed from the k = 0 run somewhere, as with the 1.5B target.
+
+The 7B target is outside the engine's parity tests (they cover the 0.5B and 1.5B models against Hugging Face transformers). Indirect evidence that it generates sensibly: the 0.5B draft's guesses were accepted 64% of the time at k = 1, and the plain-decoding runs produced 980–998 tokens in total, well under the 1,328 that the 16 length caps allow.
