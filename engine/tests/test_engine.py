@@ -158,9 +158,11 @@ def test_speculative_lossless_under_kv_pressure(baseline):
 def test_sampled_speculation_is_seeded_and_keeps_its_books():
     # the distribution itself is checked on the sampler (test_sampling.py); here: the engine
     # path is deterministic per seed, varies across seeds, and every snapshot still replays
-    a, ev_a, _ = _run(4, 12, max_new=32, stagger=False, temperature=0.8, seed=7)
-    b, _, _ = _run(4, 12, max_new=32, stagger=False, temperature=0.8, seed=7)
-    c, _, _ = _run(4, 12, max_new=32, stagger=False, temperature=0.8, seed=8)
+    # 9 blocks: room for any one request (prompt + 64 + k + a block), not for four at once, so
+    # every test pair preempts even when sampled answers end early
+    a, ev_a, _ = _run(4, 9, max_new=64, stagger=False, temperature=0.8, seed=7)
+    b, _, _ = _run(4, 9, max_new=64, stagger=False, temperature=0.8, seed=7)
+    c, _, _ = _run(4, 9, max_new=64, stagger=False, temperature=0.8, seed=8)
     assert a == b
     assert a != c
     assert ev_a[0]["temperature"] == 0.8 and ev_a[0]["seed"] == 7
@@ -168,3 +170,22 @@ def test_sampled_speculation_is_seeded_and_keeps_its_books():
     assert any(e["type"] == "verify" and e["n_accepted"] > 0 for e in ev_a)
     assert any(e["type"] == "req_preempt" for e in ev_a)  # resampling survives preemption + recompute
     assert check_events(ev_a) >= 2
+
+
+@pytest.mark.models
+def test_sampling_with_the_draft_as_its_own_target_accepts_almost_everything():
+    # p and q come from the same model at the same temperature, so min(1, p/q) is ~1: a
+    # misaligned row, a wrong temperature or a stale q would show up as rejections here
+    from infviz.engine import Engine
+
+    em, acc = Emitter(), []
+    em.sinks.append(lambda e: acc.append(e["n_accepted"]) if e["type"] == "verify" else None)
+    eng = Engine(DRAFT, DRAFT, device=DEV, dtype=torch.float32, spec_k=4, n_blocks=64,
+                 max_batch=4, emitter=em, temperature=0.8, seed=1)
+    for p in PROMPTS[:3]:
+        eng.add_request(p, 40)
+    eng.run_until_idle()
+    del eng
+    gc.collect()
+    assert len(acc) >= 10
+    assert sum(acc) / (4 * len(acc)) > 0.95, f"self-draft acceptance {sum(acc) / (4 * len(acc)):.3f}"

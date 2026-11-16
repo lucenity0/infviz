@@ -42,7 +42,8 @@ infviz is a small, honest inference engine that **emits every one of those decis
 | **Events** | The engine's last steps in plain language, newest first; the current step also runs along the transport bar | "r15 was preempted: the KV pool ran out of free blocks…" · click a step to jump to it · hover any label for a definition |
 | **Inspector** | One request, opened by clicking it in the timeline, a speculation lane or a KV block | its prompt and response, each token marked as drafted and accepted or the target's own, rejected guesses on demand, prefix reuse, acceptance and KV rolled back · its blocks stay bright in the KV grid · Esc closes |
 | **Compare** | Two recordings on one wall-clock axis (**Compare** in the transport bar, or `compare.html`) | the bundled pair is the same 16 requests with and without speculation · tokens committed over time · every engine step as a bar, wide for slow steps and tall for many tokens · the two KV caches side by side · a table of B against A |
-| **Transport** | Playback, and in live mode the engine controls | space plays, ←/→ steps, L follows live · start a load burst, slow the engine, send your own prompt |
+| **Engine** | Live mode only: presets and settings that rebuild the engine (**Engine** in the transport bar) | five presets (balanced, memory pressure, no speculation, long guesses, wide batch) each restart the engine and send a burst · or set pool size, batch, speculation and k by hand · start a load burst or slow the engine without a restart |
+| **Transport** | Playback, the current step in words, and in live mode a prompt box | space plays, ←/→ steps, L follows live · send your own prompt |
 
 Colour carries data and nothing else. The seven request hues are validated for colour-blind separation and contrast, **red has exactly one meaning (work that was thrown away)**, and accepted versus rejected is solid versus hatched, so it survives a grayscale screenshot.
 

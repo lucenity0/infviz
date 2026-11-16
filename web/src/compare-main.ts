@@ -20,7 +20,8 @@ const SPEEDS = [0.25, 0.5, 1, 2, 4];
 const $ = (id: string) => document.getElementById(id)!;
 
 function describe(s: RunSummary): string {
-  return s.draft ? `speculation, k = ${s.k}` : 'plain decoding';
+  const mode = s.draft ? `speculation, k = ${s.k}` : 'plain decoding';
+  return s.temperature > 0 ? `${mode}, T ${s.temperature}` : mode;
 }
 
 async function load(url: string): Promise<InfvizEvent[]> {

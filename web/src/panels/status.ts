@@ -25,7 +25,7 @@ export class StatusStrip {
       <div class="seg brand"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="0" y="0" width="6" height="6" fill="currentColor"/><rect x="8" y="0" width="6" height="6" fill="currentColor"/><rect x="0" y="8" width="6" height="6" fill="currentColor"/><rect x="8.5" y="8.5" width="5" height="5" fill="none" stroke="currentColor"/></svg><b>infviz</b><span class="mode ${modeCls}">${modeTxt}</span></div>
       <div class="seg"><span class="lab">Source</span><span class="v ell">${esc(src)}${p.isMock ? ' · synthetic' : ''}</span></div>
       <div class="seg"><span class="lab">Target ← draft</span><span class="v ell"><b>${esc(shortModel(cfg?.models.target))}</b> ← ${esc(shortModel(cfg?.models.draft))}</span></div>
-      <div class="seg"><span class="lab">Engine</span><span class="v ell">${cfg ? `${esc(cfg.device)} · block ${cfg.block_size} · batch ${cfg.max_batch} · k ${cfg.spec_k}` : '—'}</span></div>
+      <div class="seg"><span class="lab">Engine</span><span class="v ell">${cfg ? `${esc(cfg.device)} · block ${cfg.block_size} · batch ${cfg.max_batch} · k ${cfg.spec_k}${cfg.temperature ? ` · T ${cfg.temperature}` : ' · greedy'}` : '—'}</span></div>
       <div class="seg flex"></div>
       <div class="seg readouts">
         ${ro('Step', `${step}<span class="dim">/${p.maxStep}</span>`)}

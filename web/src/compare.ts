@@ -11,6 +11,8 @@ export interface RunSummary {
   model: string;
   draft: string | null;
   k: number;
+  /** 0 = greedy */
+  temperature: number;
   blocks: number;
   maxBatch: number;
   steps: number;
@@ -132,6 +134,7 @@ export function summarize(events: InfvizEvent[], label: string): RunSummary {
     k,
     blocks: cfg?.type === 'config' ? cfg.pools.target.n_blocks : 0,
     maxBatch: cfg?.type === 'config' ? cfg.max_batch : 0,
+    temperature: cfg?.type === 'config' ? (cfg.temperature ?? 0) : 0,
     steps: c.steps.length,
     seconds,
     tokens,
