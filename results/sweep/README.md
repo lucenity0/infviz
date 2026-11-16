@@ -53,4 +53,8 @@ Predictions for the full sweep (16 requests, k 0–8, batch 1 and 6, three repea
 
 In bf16, 4 to 8 of the 16 responses differed from the k = 0 run somewhere, as with the 1.5B target.
 
-The 7B target is outside the engine's parity tests (they cover the 0.5B and 1.5B models against Hugging Face transformers). Indirect evidence that it generates sensibly: the 0.5B draft's guesses were accepted 64% of the time at k = 1, and the plain-decoding runs produced 980–998 tokens in total, well under the 1,328 that the 16 length caps allow.
+The 7B target was outside the engine's parity tests when this sweep ran. It has since passed them: `INFVIZ_TEST_PAIR=qwen7b uv run pytest -m models` on an A100 80 GB (fp32, commit 620064d) gives logits within 9.2 × 10⁻⁵ of Hugging Face transformers, an identical argmax at every position, and lossless speculation both batched and under KV pressure.
+
+## `extra/cuda-tesla-t4-fp16.jsonl`
+
+Not in the chart (it has three series). NVIDIA T4 on a Colab VM, fp16 (the notebook's choice for a card without native bf16), torch 2.14.1+cu130, 1.5B target, same workload; produced by running `notebooks/record_on_colab.ipynb` end to end (commit 620064d). It agrees with the L4: speculation is slower at every k, at best 0.99× (k = 1, batch 6) and 0.93× (k = 1, batch 1), down to 0.41× at k = 8. In fp16, 14 to 16 of the 16 responses matched plain decoding, more than in bf16.

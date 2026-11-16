@@ -7,7 +7,7 @@ What comes next for infviz, in the order it will be done. Each item says why it 
 §4 used to rest on one fp32 anecdote ("66 steps → 37, but 4.3 s → 7.2 s"). It now cites measured sweeps on an M2 Pro and an NVIDIA L4, with a 1.5B and a 7B target.
 
 1. ✓ **Speculation sweep on Apple silicon.** k ∈ {0, 1, 2, 3, 4, 6, 8}, bf16, the 16-request workload, batch sizes 1 and 6, 3 interleaved repeats after warm-up. Record wall-clock, steps, tokens per target pass, acceptance and whether the output matches plain greedy decoding. *Done:* `infviz sweep` exists and its results are committed under `results/sweep/`.
-2. ✓ **The same sweep on a GPU.** *(Done on an L4 via the Colab CLI; the notebook itself has still not been run end to end.)* The Colab notebook runs `infviz sweep` on a T4 or L4 and downloads one results file. *Done:* a GPU results file is committed next to the MPS one.
+2. ✓ **The same sweep on a GPU.** *(Done on an L4 and, with a 7B target, again on an L4; the notebook itself then ran end to end on a T4.)* The Colab notebook runs `infviz sweep` on a T4 or L4 and downloads one results file. *Done:* a GPU results file is committed next to the MPS one.
 3. ✓ **Break-even figure and a new §4.** A chart generated from the committed results: wall-clock speed-up against k, per device and batch size, with the 1.0 line marked. *Done:* §4 cites the figure, not the anecdote.
 4. ✓ **Prior-art check** on trace-driven KV-cache and speculation visualizers, before any "no one does this" claim. *Done:* the README names what exists and what infviz adds.
 
@@ -28,7 +28,7 @@ What comes next for infviz, in the order it will be done. Each item says why it 
 11. ✓ **Late join loses prompt text.** Add request metadata to engine snapshots (a protocol addition in `docs/EVENTS.md`).
 12. ✓ **Light theme.** Its colours are placeholders; validate them like the dark set.
 13. **Sampling.** Temperature sampling with the standard speculative acceptance rule; acceptance will differ from greedy.
-14. **Never run yet:** the Colab notebook end to end (its sweep ran through the Colab CLI instead). *(Done: the SmolLM2 135M → 360M pair passes the model tests; the animated SVGs play on GitHub; the 7B target has run, outside the parity tests.)*
+14. ✓ **Never run yet.** All run now: the Colab notebook end to end on a T4 (headless, with the browser-only upload and download cells guarded), the SmolLM2 135M → 360M pair through the model tests, the 7B target through the model tests on an A100, and the animated SVGs on GitHub.
 
 ## Deferred
 
