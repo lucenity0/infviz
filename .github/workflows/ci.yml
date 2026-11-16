@@ -15,7 +15,7 @@ jobs:
         with:
           python-version: "3.12"
       # the reference reducer is pure Python: no torch, no model weights
-      - run: PYTHONPATH=engine/src python -m infviz.replay web/public/demo.jsonl
+      - run: for t in demo ab-plain ab-spec; do PYTHONPATH=engine/src python -m infviz.replay web/public/$t.jsonl || exit 1; done
 
   web:
     name: web (typecheck, tests, build)
@@ -32,10 +32,12 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - run: npm ci
       - run: npx vitest run
-      - run: TRACE=public/demo.jsonl npx vitest run
+      - run: for t in demo ab-plain ab-spec; do TRACE=public/$t.jsonl npx vitest run || exit 1; done
       - run: npm run build
       # the Envato font must never be committed or shipped in a build
       - name: licensed font is not in git or dist
         run: |
           if git ls-files | grep -i 'fonts/licensed/'; then echo "licensed font is tracked by git"; exit 1; fi
           if [ -e dist/fonts/licensed ]; then echo "licensed font leaked into dist/"; exit 1; fi
+      - name: both pages are built
+        run: test -f dist/index.html && test -f dist/compare.html

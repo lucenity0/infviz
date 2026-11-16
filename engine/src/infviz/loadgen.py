@@ -47,7 +47,10 @@ def make_workload(n: int, seed: int = 0):
 
 
 def arrival_steps(n: int, mean_gap: float, seed: int = 0) -> list[int]:
-    """Poisson arrivals measured in engine steps (deterministic for recording)."""
+    """Poisson arrivals measured in engine steps (deterministic for recording).
+    ``mean_gap <= 0`` means every request arrives at step 0 (a closed workload)."""
+    if mean_gap <= 0:
+        return [0] * n
     rng = random.Random(seed + 1)
     t, steps = 0.0, []
     for _ in range(n):

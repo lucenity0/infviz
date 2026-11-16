@@ -1,7 +1,5 @@
-import '@fontsource/geist-mono/400.css';
-import '@fontsource/geist-mono/500.css';
-import '@fontsource-variable/inter-tight/wght.css';
 import { parseJsonl } from './events';
+import { fontsReady } from './fonts';
 import { connectLive } from './live';
 import { currentStep, storyAt } from './panels/feed';
 import { InspectPanel } from './panels/inspect';
@@ -16,18 +14,11 @@ import { Transport } from './transport';
 import { reduceMotion } from './ui';
 
 applyTokens(new URLSearchParams(location.search).get('theme') === 'light' ? 'light' : 'dark');
-
-// Brutal Milk is an Envato-licensed face kept out of git (public/fonts/licensed/).
-// Load it if present; otherwise the stack falls back to Inter Tight (OFL) silently.
-(async () => {
-  try {
-    const url = new URL('fonts/licensed/brutal-milk-var.woff2', document.baseURI).href;
-    const face = new FontFace('Brutal Milk', `url(${url}) format('woff2')`, { weight: '100 900' });
-    document.fonts.add(await face.load());
-  } catch {
-    /* fallback stack */
-  }
-})();
+// poster: a fixed frame for screenshots and GIF capture (no transport, no hover, no autoplay)
+const poster = new URLSearchParams(location.search).has('poster');
+if (poster) document.documentElement.classList.add('poster');
+let markLoaded: () => void = () => {};
+const loaded = new Promise<void>((r) => (markLoaded = r));
 
 const player = new Player();
 player.stepwise = reduceMotion();
@@ -59,7 +50,8 @@ function startReplay(text: string, label: string) {
   if (q.has('speed')) player.setSpeed(Number(q.get('speed')) || 1);
   if (q.has('pos')) player.seek(Number(q.get('pos')));
   else if (q.has('step')) player.seekStep(Number(q.get('step')));
-  if ((!q.has('step') && !q.has('pos')) || q.has('play')) player.play();
+  if (!poster && ((!q.has('step') && !q.has('pos')) || q.has('play'))) player.play();
+  markLoaded();
   return true;
 }
 async function openFile(f: File) {
@@ -147,7 +139,7 @@ async function boot() {
       toast(`Could not load trace ${traceUrl}: ${e}`);
     }
   }
-  if (!params.has('nolive')) {
+  if (!params.has('nolive') && !poster) {
     status.conn = 'connecting';
     kv.setOverlay('loading');
     if (await connect(true)) {
@@ -191,10 +183,7 @@ function renderNarration() {
 
 // ---------- frame loop: everything renders from (state, pos) ----------
 let last = performance.now();
-function frame(now: number) {
-  const dt = Math.min(100, now - last);
-  last = now;
-  player.tick(dt);
+function renderAll() {
   status.render(player);
   transport.render();
   kv.render(player);
@@ -202,10 +191,23 @@ function frame(now: number) {
   timeline.render(player);
   inspect.render(player);
   renderNarration();
+}
+function frame(now: number) {
+  const dt = Math.min(100, now - last);
+  last = now;
+  player.tick(dt);
+  renderAll();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+/** capture hook: settle the whole page on playback position `pos`, synchronously */
+function renderAt(pos: number) {
+  player.pause();
+  player.seek(pos);
+  renderAll();
+}
 matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', () => (player.stepwise = reduceMotion()));
 boot();
 
-(window as unknown as { infviz: unknown }).infviz = { player, selection };
+const ready = Promise.all([loaded, fontsReady]).then(() => renderAll());
+(window as unknown as { infviz: unknown }).infviz = { player, selection, renderAt, ready, spec };

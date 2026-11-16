@@ -41,6 +41,7 @@ infviz is a small, honest inference engine that **emits every one of those decis
 | **Timeline** | The whole run on one step axis, one playhead | step time · KV occupancy · accepted vs rejected drafts per step · a lane per request: dotted = waiting, block = prefill, ticks = tokens committed, × = preempted |
 | **Events** | The engine's last steps in plain language, newest first; the current step also runs along the transport bar | "r15 was preempted: the KV pool ran out of free blocks…" · click a step to jump to it · hover any label for a definition |
 | **Inspector** | One request, opened by clicking it in the timeline, a speculation lane or a KV block | its prompt and response, each token marked as drafted and accepted or the target's own, rejected guesses on demand, prefix reuse, acceptance and KV rolled back · its blocks stay bright in the KV grid · Esc closes |
+| **Compare** | Two recordings on one wall-clock axis (**Compare** in the transport bar, or `compare.html`) | the bundled pair is the same 16 requests with and without speculation · tokens committed over time · every engine step as a bar, wide for slow steps and tall for many tokens · the two KV caches side by side · a table of B against A |
 | **Transport** | Playback, and in live mode the engine controls | space plays, ←/→ steps, L follows live · start a load burst, slow the engine, send your own prompt |
 
 Colour carries data and nothing else. The seven request hues are validated for colour-blind separation and contrast, **red has exactly one meaning (work that was thrown away)**, and accepted versus rejected is solid versus hatched, so it survives a grayscale screenshot.
@@ -98,7 +99,9 @@ uv run infviz check ../traces/run.jsonl                              # honesty c
 uv run infviz sweep --out ../results/sweep/mine.jsonl                # time speculation against k (about 25 min)
 ```
 
-Drop any `.jsonl` onto the page, or open `?trace=<url>`. Deep links take `?step=45` or a fractional `?pos=30.6`, plus `&play=1` and `&speed=4`. Knobs that make things visible: `--blocks` (smaller means more eviction and preemption), `--max-batch`, `--spec-k`, `--draft none`, `--step-delay`.
+Drop any `.jsonl` onto the page, or open `?trace=<url>`; compare two with `compare.html?a=<url>&b=<url>`. Deep links take `?step=45` or a fractional `?pos=30.6`, plus `&play=1` and `&speed=4`. Knobs that make things visible: `--blocks` (smaller means more eviction and preemption), `--max-batch`, `--spec-k`, `--draft none`, `--step-delay`.
+
+**Posters and GIFs.** Add `&poster=1` for a clean fixed frame. To write files, `cd web && npm run capture -- --at 45 --out poster.png`, or `--from 20 --to 60 --out run.gif` (add `--page compare` for the comparison, in seconds). It drives your installed Chrome headlessly, every frame is the page settled on one exact position, and it uses only the open-licence fonts.
 
 **On a GPU.** [`notebooks/record_on_colab.ipynb`](notebooks/record_on_colab.ipynb) runs the speculation sweep on a Colab GPU, and can record a heavier run (optionally with a 7B target) for local replay.
 

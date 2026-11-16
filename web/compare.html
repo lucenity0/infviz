@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>infviz · compare</title>
+    <meta name="description" content="Two inference engine runs side by side on one wall-clock axis: KV cache, steps and tokens." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230b0c10'/%3E%3Crect x='3' y='3' width='4' height='4' fill='%23e8ebef'/%3E%3Crect x='9' y='3' width='4' height='4' fill='%23e8ebef'/%3E%3Crect x='3' y='9' width='4' height='4' fill='%23e8ebef'/%3E%3Crect x='9.5' y='9.5' width='3' height='3' fill='none' stroke='%237f8895'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="cmp" class="machine cmp">
+      <header id="cstatus" class="strip" aria-label="Comparison"></header>
+      <section id="kvA" class="cell kv" aria-label="Run A KV cache"></section>
+      <section id="kvB" class="cell kv" aria-label="Run B KV cache"></section>
+      <section id="stats" class="cell stats" aria-label="Run A against run B"></section>
+      <div id="ctransport" class="cell transport" role="toolbar" aria-label="Playback">
+        <div class="tgroup">
+          <button id="c-play" class="tbtn" aria-label="Play or pause (space)" title="Play / pause · space"></button>
+          <button id="c-back" class="tbtn" aria-label="Back half a second (left arrow)" title="−0.5 s · ←">
+            <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 2v8M10 2.2 4.2 6 10 9.8z" /></svg>
+          </button>
+          <button id="c-fwd" class="tbtn" aria-label="Forward half a second (right arrow)" title="+0.5 s · →">
+            <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M9.5 2v8M2 2.2 7.8 6 2 9.8z" /></svg>
+          </button>
+        </div>
+        <div id="c-speeds" class="tgroup seg" role="group" aria-label="Playback speed"></div>
+        <div class="narr static"><span class="lab">Shared clock</span><span class="nt" id="c-note"></span></div>
+        <a class="tbtn text" href="./" title="Back to the single-run debugger">Single run</a>
+      </div>
+      <section id="ctl" class="cell tl" aria-label="Both runs on one time axis"></section>
+    </div>
+    <div id="toast" class="toast" role="status" hidden></div>
+    <script type="module" src="/src/compare-main.ts"></script>
+  </body>
+</html>

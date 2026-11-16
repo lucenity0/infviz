@@ -22,7 +22,7 @@ def engine_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--snapshot-every", type=int, default=8)
 
 
-def build_engine(a, emitter=None):
+def build_engine(a, emitter=None, store=None):
     from .engine import Engine
 
     return Engine(
@@ -37,6 +37,7 @@ def build_engine(a, emitter=None):
         spec_k=0 if a.draft == "none" else a.spec_k,
         snapshot_every=a.snapshot_every,
         emitter=emitter,
+        store=store,
     )
 
 
@@ -56,11 +57,22 @@ def cmd_record(a) -> None:
     from .events import Emitter, JsonlSink
     from .replay import main as check
 
+    from .engine import ModelStore
+
+    store = ModelStore()
+    work = loadgen.make_workload(a.n, a.seed)
+    if a.warmup:
+        # a short discarded run first, so kernel compilation and caches don't land in the trace
+        warm = build_engine(a, None, store)
+        for p, max_new, system in work[: min(6, a.n)]:
+            warm.add_request(p, min(max_new, 16), system=system)
+        while warm.step():
+            pass
+        del warm
     em = Emitter()
     sink = JsonlSink(a.out)
     em.sinks.append(sink)
-    eng = build_engine(a, em)
-    work = loadgen.make_workload(a.n, a.seed)
+    eng = build_engine(a, em, store)
     arrivals = loadgen.arrival_steps(a.n, a.mean_gap, a.seed)
     t0, i = time.time(), 0
     while True:
@@ -109,8 +121,10 @@ def main() -> None:
     engine_args(r)
     r.add_argument("--out", default="../traces/demo.jsonl")
     r.add_argument("-n", type=int, default=16, help="number of requests")
-    r.add_argument("--mean-gap", type=float, default=4.0, help="mean steps between arrivals")
+    r.add_argument("--mean-gap", type=float, default=4.0, help="mean steps between arrivals (0: all at once)")
     r.add_argument("--seed", type=int, default=0)
+    r.add_argument("--no-warmup", dest="warmup", action="store_false",
+                   help="skip the discarded warm-up run before recording")
     r.set_defaults(fn=cmd_record)
 
     w = sub.add_parser("sweep", help="time speculative decoding against k and batch size")

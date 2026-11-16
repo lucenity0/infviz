@@ -997,3 +997,155 @@ s.rj {
     display: none;
   }
 }
+
+/* ---------- compare page ---------- */
+.machine.cmp {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: 44px minmax(0, 1fr) auto 40px minmax(220px, 34vh);
+  grid-template-areas:
+    'status status'
+    'kva kvb'
+    'stats stats'
+    'transport transport'
+    'tl tl';
+}
+#cstatus { grid-area: status; }
+#kvA { grid-area: kva; }
+#kvB { grid-area: kvb; }
+#stats { grid-area: stats; }
+#ctransport { grid-area: transport; }
+#ctl { grid-area: tl; }
+.stats .ab {
+  width: 100%;
+  border-collapse: collapse;
+  font: 400 var(--t-small) / 1 var(--mono);
+}
+.stats .ab th,
+.stats .ab td {
+  padding: 7px var(--s4);
+  border-bottom: 1px solid var(--hair);
+  text-align: right;
+  white-space: nowrap;
+}
+.stats .ab th:first-child {
+  text-align: left;
+  width: 22%;
+}
+.stats .ab thead th {
+  font-weight: 500;
+}
+.stats .ab td {
+  color: var(--ink);
+}
+.stats .ab .d {
+  color: var(--ink-2);
+}
+.stats .ab .d.good,
+.stats .ab .d.bad {
+  color: var(--ink);
+  font-weight: 500;
+}
+.stats .ab .d.bad::before {
+  content: '▼ ';
+  font-size: 0.8em;
+  color: var(--ink-3);
+}
+.stats .ab .d.good::before {
+  content: '▲ ';
+  font-size: 0.8em;
+  color: var(--ink-3);
+}
+.stats .note {
+  margin: 0;
+  padding: var(--s2) var(--s4) var(--s3);
+  font: 400 var(--t-small) / 1.5 var(--sans);
+  color: var(--ink-3);
+}
+.narr.static {
+  cursor: default;
+}
+.narr.static:hover {
+  background: none;
+  color: var(--ink-2);
+}
+a.tbtn {
+  text-decoration: none;
+  color: var(--ink-2);
+}
+.sw.ab-a,
+.sw.ab-b {
+  width: 16px;
+}
+.sw.ab-a {
+  background: none;
+  border-top: 2px dashed var(--ink-2);
+  height: 0;
+  align-self: center;
+}
+.sw.ab-b {
+  background: var(--ink);
+  height: 2px;
+  align-self: center;
+}
+@media (max-width: 900px) {
+  .machine.cmp {
+    height: auto;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 44vh 44vh auto auto 320px;
+    grid-template-areas: 'status' 'kva' 'kvb' 'stats' 'transport' 'tl';
+  }
+  .stats .ab th,
+  .stats .ab td {
+    padding: 6px var(--s2);
+  }
+}
+
+/* ---------- poster: a fixed frame for screenshots and GIF capture ---------- */
+.poster .machine:not(.cmp) {
+  grid-template-rows: 44px minmax(0, 1fr) 0 minmax(240px, 40vh);
+}
+.poster #transport,
+.poster #ctransport,
+.poster .tip {
+  display: none !important;
+}
+.poster .machine.cmp {
+  grid-template-rows: 44px minmax(0, 1fr) auto 0 minmax(220px, 34vh);
+}
+.poster * {
+  cursor: default !important;
+}
+
+/* legends give way before they collide: narrow KV and timeline cells drop them
+   (every mark is still defined by its hover definition and in the README) */
+.kv,
+.tl {
+  container-type: inline-size;
+}
+@container (max-width: 760px) {
+  .kv > .head .legend,
+  .tl > .head .legend {
+    display: none;
+  }
+}
+
+/* phones */
+@media (max-width: 600px) {
+  .strip .readouts {
+    flex-wrap: wrap;
+    gap: var(--s2) var(--s4);
+  }
+  #ctransport {
+    flex-wrap: wrap;
+  }
+  #ctransport .narr {
+    flex-basis: 100%;
+    order: 9;
+    height: 36px;
+    border-top: 1px solid var(--hair);
+  }
+  .tbtn {
+    min-width: 34px;
+    padding: 0 var(--s2);
+  }
+}

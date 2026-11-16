@@ -34,6 +34,10 @@ export default defineConfig({
       '/api': { target: 'http://localhost:8000', changeOrigin: true },
     },
   },
-  build: { target: 'es2022', sourcemap: false },
+  build: {
+    target: 'es2022',
+    sourcemap: false,
+    rollupOptions: { input: { main: resolve(__dirname, 'index.html'), compare: resolve(__dirname, 'compare.html') } },
+  },
   test: { environment: 'node', include: ['src/**/*.test.ts'] },
 } as any);

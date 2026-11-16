@@ -59,10 +59,10 @@ export class KvPanel {
   private player: Player | null = null;
   private hover: { pool: PoolView; block: number } | null = null;
 
-  constructor(root: HTMLElement) {
+  constructor(root: HTMLElement, title = 'KV cache') {
     root.innerHTML = `
       <div class="head">
-        <span class="title" data-term="kv">KV cache</span><span class="sub" data-sub></span>
+        <span class="title" data-term="kv">${esc(title)}</span><span class="sub" data-sub></span>
         <span class="grow"></span>
         <div class="legend">
           <span class="key lab" data-term="owned"><i class="sw used"></i>Owned</span>
