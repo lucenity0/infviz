@@ -31,7 +31,7 @@ infviz is a small, honest inference engine that **emits every one of those decis
 ### §2 · What you see
 
 <p align="center">
-  <img src="assets/ui-dark.png" alt="The infviz debugger mid-step: KV cache pools with shared-prefix blocks and rolled-back cells, speculation lanes with accepted and rejected drafts, and the timeline with one playhead." width="100%">
+  <img src="assets/ui-dark.png" alt="The infviz debugger at step 30: KV cache pools with shared-prefix blocks and rolled-back cells, speculation lanes with accepted and rejected drafts, the current step narrated in the transport bar, and the timeline with one playhead." width="100%">
 </p>
 
 | Panel | What it shows | How to read it |

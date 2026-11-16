@@ -12,7 +12,7 @@
 // ?step=45) and seconds on the compare page.
 // Uses your installed Chrome (set CHROME_PATH if it is somewhere unusual). The licensed
 // display font is blocked by default so outputs carry only the OFL fonts; pass
-// --licensed-font to allow it for private use.
+// --licensed-font to allow it for private use. --full keeps the transport bar.
 import { existsSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -29,11 +29,12 @@ function args(argv) {
   const a = {
     page: 'single', trace: './demo.jsonl', a: null, b: null, at: null, from: null, to: null, step: 0.25,
     fps: 12, hold: 1.5, width: 1280, height: 800, scale: 1, out: null, theme: 'dark', maxMb: 15,
-    licensedFont: false,
+    licensedFont: false, full: false,
   };
   for (let i = 0; i < argv.length; i++) {
     const k = argv[i].replace(/^--/, '').replace(/-([a-z])/g, (_, c) => c.toUpperCase());
     if (k === 'licensedFont') a.licensedFont = true;
+    else if (k === 'full') a.full = true;
     else if (k in a) a[k] = argv[++i];
     else throw new Error(`unknown option --${argv[i].replace(/^--/, '')}`);
   }
@@ -64,7 +65,8 @@ const a = args(process.argv.slice(2));
 const server = await createServer({ root, logLevel: 'error', server: { port: 0, strictPort: false } });
 await server.listen();
 const base = server.resolvedUrls.local[0];
-const q = new URLSearchParams({ poster: '1', theme: a.theme });
+const q = new URLSearchParams({ theme: a.theme });
+if (!a.full) q.set('poster', '1'); // --full keeps the transport bar (a screenshot of the whole app)
 let url;
 if (a.page === 'compare') {
   if (a.a) q.set('a', a.a);
