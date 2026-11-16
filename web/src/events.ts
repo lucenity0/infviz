@@ -20,6 +20,9 @@ export interface ConfigEvent extends Base {
   max_batch: number;
   spec_k: number;
   snapshot_every: number;
+  /** 0 or absent = greedy; > 0 = sampling (verify uses the speculative accept rule) */
+  temperature?: number;
+  seed?: number;
 }
 
 export interface ReqArriveEvent extends Base {

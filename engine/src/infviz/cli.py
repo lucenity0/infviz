@@ -20,6 +20,9 @@ def engine_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--max-batch", type=int, default=6)
     p.add_argument("--spec-k", type=int, default=4)
     p.add_argument("--snapshot-every", type=int, default=8)
+    p.add_argument("--temperature", type=float, default=0.0,
+                   help="0 = greedy (default, exact); > 0 = sampling with the speculative accept rule")
+    p.add_argument("--sample-seed", type=int, default=0, help="seed for sampling (per-request RNGs)")
 
 
 def build_engine(a, emitter=None, store=None):
@@ -38,6 +41,8 @@ def build_engine(a, emitter=None, store=None):
         snapshot_every=a.snapshot_every,
         emitter=emitter,
         store=store,
+        temperature=a.temperature,
+        seed=a.sample_seed,
     )
 
 
@@ -57,6 +62,7 @@ def cmd_serve(a) -> None:
             block_size=a.block_size, n_blocks=st["blocks"], draft_blocks=a.draft_blocks,
             max_batch=st["max_batch"], spec_k=st["spec_k"] if spec else 0,
             snapshot_every=a.snapshot_every, emitter=em, store=store,
+            temperature=a.temperature, seed=a.sample_seed,
         )
 
     settings = {"blocks": a.blocks, "max_batch": a.max_batch,

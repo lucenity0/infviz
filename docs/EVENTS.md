@@ -40,7 +40,10 @@ the block stays `used`.
   `snapshot`, and no event of the previous session follows it.
   `{models: {target: str, draft: str|null}, device: str, block_size: int,
     pools: {target: {n_blocks: int}, draft?: {n_blocks: int}},
-    max_batch: int, spec_k: int, snapshot_every: int}`
+    max_batch: int, spec_k: int, snapshot_every: int, temperature?: float, seed?: int}`
+  `temperature` 0 (or absent, in older traces) means greedy decoding. Above 0 the engine
+  samples, and `verify.n_accepted` comes from the speculative accept rule (each draft kept
+  with probability min(1, p/q)) instead of exact agreement; the events are otherwise the same.
 
 ### Requests
 - `req_arrive {rid, prompt_text: str, prompt_len: int, max_new_tokens: int}` — enters waiting queue.

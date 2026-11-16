@@ -109,7 +109,7 @@ export class InspectPanel {
     let resp = '';
     for (const t of tr.tokens) {
       if (this.showRejected && t.rejected !== undefined)
-        resp += `<s class="rj" title="draft guessed this; the target disagreed">${esc(vis(t.rejected))}</s>`;
+        resp += `<s class="rj" title="draft guessed this; the target rejected it">${esc(vis(t.rejected))}</s>`;
       const cls = t.src === 'draft' ? 'td' : 'tt';
       const title =
         t.src === 'draft'

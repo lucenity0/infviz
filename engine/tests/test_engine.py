@@ -71,13 +71,15 @@ def test_block_pool_random_ops_keep_invariants_and_replay_exactly():
 
 
 # ---------------------------------------------------------------- with real models
-def _run(spec_k: int, n_blocks: int, max_new: int = 64, stagger: bool = True):
+def _run(spec_k: int, n_blocks: int, max_new: int = 64, stagger: bool = True,
+         temperature: float = 0.0, seed: int = 0):
     from infviz.engine import Engine
 
     em, events = Emitter(), []
     em.sinks.append(events.append)
     eng = Engine(TARGET, DRAFT if spec_k else None, device=DEV, dtype=torch.float32, spec_k=spec_k,
-                 n_blocks=n_blocks, draft_blocks=n_blocks, max_batch=4, emitter=em)
+                 n_blocks=n_blocks, draft_blocks=n_blocks, max_batch=4, emitter=em,
+                 temperature=temperature, seed=seed)
     rids, i = [], 0
     while True:
         while i < len(PROMPTS) and (not stagger or eng.em.step % 3 == 0):  # lanes join mid-flight
@@ -89,7 +91,15 @@ def _run(spec_k: int, n_blocks: int, max_new: int = 64, stagger: bool = True):
             break
         eng.check()
     eng.em.emit("snapshot", **eng.snapshot())
-    return {r: eng.reqs[r].output for r in rids}, events, eng
+    out = {r: list(eng.reqs[r].output) for r in rids}
+    # free this fp32 model pair before the next run: a 16 GB machine swaps if they pile up
+    del eng
+    gc.collect()
+    if DEV == "mps":
+        torch.mps.empty_cache()
+    elif DEV == "cuda":
+        torch.cuda.empty_cache()
+    return out, events, None
 
 
 @pytest.mark.models
@@ -142,3 +152,19 @@ def test_speculative_lossless_under_kv_pressure(baseline):
     assert any(e["type"] == "block_evict" for e in events)
     assert any(e["type"] == "req_preempt" for e in events)
     assert check_events(events) >= 2
+
+
+@pytest.mark.models
+def test_sampled_speculation_is_seeded_and_keeps_its_books():
+    # the distribution itself is checked on the sampler (test_sampling.py); here: the engine
+    # path is deterministic per seed, varies across seeds, and every snapshot still replays
+    a, ev_a, _ = _run(4, 12, max_new=32, stagger=False, temperature=0.8, seed=7)
+    b, _, _ = _run(4, 12, max_new=32, stagger=False, temperature=0.8, seed=7)
+    c, _, _ = _run(4, 12, max_new=32, stagger=False, temperature=0.8, seed=8)
+    assert a == b
+    assert a != c
+    assert ev_a[0]["temperature"] == 0.8 and ev_a[0]["seed"] == 7
+    assert any(e["type"] == "verify" and e["n_accepted"] < 4 for e in ev_a)
+    assert any(e["type"] == "verify" and e["n_accepted"] > 0 for e in ev_a)
+    assert any(e["type"] == "req_preempt" for e in ev_a)  # resampling survives preemption + recompute
+    assert check_events(ev_a) >= 2

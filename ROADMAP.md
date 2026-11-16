@@ -27,7 +27,7 @@ What comes next for infviz, in the order it will be done. Each item says why it 
 
 11. ✓ **Late join loses prompt text.** Add request metadata to engine snapshots (a protocol addition in `docs/EVENTS.md`).
 12. ✓ **Light theme.** Its colours are placeholders; validate them like the dark set.
-13. **Sampling.** Temperature sampling with the standard speculative acceptance rule; acceptance will differ from greedy.
+13. ✓ **Sampling.** Temperature sampling with the standard speculative acceptance rule; acceptance will differ from greedy.
 14. ✓ **Never run yet.** All run now: the Colab notebook end to end on a T4 (headless, with the browser-only upload and download cells guarded), the SmolLM2 135M → 360M pair through the model tests, the 7B target through the model tests on an A100, and the animated SVGs on GitHub.
 
 ## Deferred

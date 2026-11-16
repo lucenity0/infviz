@@ -21,6 +21,7 @@ from tokenizers import Tokenizer
 from .events import Emitter
 from .kv import BlockPool
 from .model import Model, SeqInput
+from .sampling import accept_or_resample, probs, sample
 
 DEFAULT_SYSTEM = "You are a helpful assistant."
 
@@ -43,6 +44,7 @@ class Request:
     prefilled: bool = False
     done: bool = False
     arrive_step: int = 0
+    gen: torch.Generator | None = None  # per-request RNG (sampling only)
 
     @property
     def all(self) -> list[int]:
@@ -100,6 +102,8 @@ class Engine:
         snapshot_every: int = 8,
         emitter: Emitter | None = None,
         store: ModelStore | None = None,
+        temperature: float = 0.0,
+        seed: int = 0,
     ):
         self.device = device or default_device()
         self.em = emitter or Emitter()
@@ -113,6 +117,9 @@ class Engine:
         # argmax only over real tokenizer ids: embedding matrices are often padded (e.g. Qwen2.5-7B
         # has 152064 rows vs 151936 for 0.5B), and padded ids must never be picked or compared.
         self.V = self.tok.get_vocab_size(with_added_tokens=True)
+        # 0 = greedy (the exact argmax path); > 0 = sampling with the speculative accept rule
+        self.temperature, self.seed = max(0.0, float(temperature)), int(seed)
+        self._q: dict[int, list[torch.Tensor]] = {}  # draft probabilities this step (sampling)
         self.bs, self.max_batch = block_size, max_batch
         self.prefill_budget, self.snapshot_every = prefill_budget, snapshot_every
 
@@ -147,6 +154,8 @@ class Engine:
             max_batch=max_batch,
             spec_k=self.k,
             snapshot_every=snapshot_every,
+            temperature=self.temperature,
+            seed=self.seed,
         )
         self.em.emit("snapshot", **self.snapshot())
 
@@ -230,6 +239,8 @@ class Engine:
             except queue.Empty:
                 return
             r.arrive_step = self.em.step
+            if self.temperature > 0:
+                r.gen = torch.Generator().manual_seed(self.seed * 1_000_003 + r.rid)
             self.reqs[r.rid] = r
             self.waiting.append(r.rid)
             self.em.emit("req_arrive", rid=r.rid, prompt_text=r.prompt_text,
@@ -297,8 +308,16 @@ class Engine:
                 toks = r.all[start:] if j == 0 else [props[r.rid][-1]]
                 inputs.append(SeqInput(toks, start, self.dpool.slots(r.rid, start + len(toks))))
             logits = self.draft.forward(inputs, self.dcache)
-            # one device sync per draft pass, not one per lane
-            nxt = torch.stack([lg[-1, : self.V] for lg in logits]).argmax(-1).tolist()
+            if self.temperature > 0:
+                # sample each lane's next draft token from q and keep q for the accept rule
+                q = probs(torch.stack([lg[-1, : self.V] for lg in logits]), self.temperature).cpu()
+                nxt = []
+                for r, qi in zip(decodes, q):
+                    self._q.setdefault(r.rid, []).append(qi)
+                    nxt.append(sample(qi, r.gen))
+            else:
+                # one device sync per draft pass, not one per lane
+                nxt = torch.stack([lg[-1, : self.V] for lg in logits]).argmax(-1).tolist()
             for r, inp, t in zip(decodes, inputs, nxt):
                 self.dpool.set_len(r.rid, inp.start_pos + len(inp.tokens))
                 props[r.rid].append(t)
@@ -321,6 +340,9 @@ class Engine:
             toks = [r.all[-1]] + props.get(r.rid, [])
             inputs.append(SeqInput(toks, T, self.tpool.slots(r.rid, T + len(toks)), all_logits=True))
         logits = self.target.forward(inputs, self.tcache)
+        if self.temperature > 0:
+            self._target_sampled(lanes, inputs, logits, props)
+            return
         # one device sync for the whole verify pass, then split per lane
         flat = torch.cat([lg[:, : self.V].argmax(-1) for lg in logits]).tolist()
         all_preds, off = [], 0
@@ -346,6 +368,32 @@ class Engine:
                 self.tpool.set_len(r.rid, T + n + 1)
                 self.dpool.set_len(r.rid, min(self.dpool.kv_len(r.rid), T + n + 1))
             self._commit(r, p[:n] + [tt])
+
+    def _target_sampled(self, lanes: list[Request], inputs: list[SeqInput], logits,
+                        props: dict[int, list[int]]) -> None:
+        """Sampling counterpart of the greedy verify: same events, same KV bookkeeping."""
+        P = probs(torch.cat([lg[:, : self.V] for lg in logits]), self.temperature).cpu()
+        off = 0
+        for r, inp, lg in zip(lanes, inputs, logits):
+            p = P[off : off + lg.shape[0]]
+            off += lg.shape[0]
+            T = inp.start_pos
+            self.tpool.set_len(r.rid, T + len(inp.tokens))
+            if not r.prefilled:
+                r.prefilled = True
+                self._commit(r, [sample(p[-1], r.gen)])
+                continue
+            d = props.get(r.rid, [])
+            if self.k and d:
+                n, tt = accept_or_resample(p, torch.stack(self._q.pop(r.rid)), d, r.gen)
+                self.em.emit("verify", rid=r.rid, n_accepted=n, target_token=tt,
+                             target_text=self.decode([tt]))
+                self.tpool.set_len(r.rid, T + n + 1)
+                self.dpool.set_len(r.rid, min(self.dpool.kv_len(r.rid), T + n + 1))
+            else:
+                n, tt = 0, sample(p[-1], r.gen)
+            self._commit(r, d[:n] + [tt])
+        self._q.clear()
 
     def _commit(self, r: Request, toks: list[int]) -> None:
         for t in toks:
