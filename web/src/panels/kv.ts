@@ -12,7 +12,7 @@ import type { Player } from '../player';
 import { selection } from '../select';
 import type { Block, State } from '../reducer';
 import { C, MOTION, hatch, reqColor, rgba } from '../tokens';
-import { clamp01, el, esc, fitCanvas, shortModel, snippet, tip } from '../ui';
+import { clamp01, el, esc, fitCanvas, outlined, shortModel, snippet, tip } from '../ui';
 
 interface Geo {
   c: number; // cell px
@@ -62,7 +62,7 @@ export class KvPanel {
   constructor(root: HTMLElement, title = 'KV cache') {
     root.innerHTML = `
       <div class="head">
-        <span class="title" data-term="kv">${esc(title)}</span><span class="sub" data-sub></span>
+        <span class="title" data-term="kv">${outlined(title.toUpperCase(), title)}</span><span class="sub" data-sub></span>
         <span class="grow"></span>
         <div class="legend">
           <span class="key lab" data-term="owned"><i class="sw used"></i>Owned</span>

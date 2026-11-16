@@ -1,5 +1,6 @@
 import type { ReqInfo } from './reducer';
 import { GLOSSARY } from './glossary';
+import { OUTLINES } from './outlines';
 import { reqColor } from './tokens';
 
 export const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -17,6 +18,18 @@ export function snippet(text: string): string {
 
 export function colorOf(r: ReqInfo | undefined): string {
   return reqColor(r ? r.colorSlot : -1);
+}
+
+/**
+ * A fixed title in the display face, as a vector outline (see scripts/outline_titles.py),
+ * or plain text in the fallback face when no outline exists for it. `key` is the string
+ * exactly as displayed (uppercase for panel titles); `label` is what screen readers read.
+ */
+export function outlined(key: string, label = key): string {
+  const o = OUTLINES[key];
+  if (!o) return esc(label);
+  const u = o.upm;
+  return `<svg class="ol" viewBox="0 ${-o.asc} ${o.w} ${o.h}" style="width:${(o.w / u).toFixed(3)}em;height:${(o.h / u).toFixed(3)}em;vertical-align:${(-(o.h - o.asc) / u).toFixed(3)}em" role="img" aria-label="${esc(label)}"><path d="${o.d}"/></svg>`;
 }
 
 export const vis = (t: string) => t.replace(/\n/g, '↵');

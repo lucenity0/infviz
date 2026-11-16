@@ -69,7 +69,7 @@ export const SPACE = { 1: 4, 2: 8, 3: 12, 4: 16, 5: 24, 6: 32 } as const;
 
 export const TYPE = {
   // families
-  sans: `'Brutal Milk', 'Inter Tight Variable', ui-sans-serif, system-ui, sans-serif`,
+  sans: `'Inter Tight Variable', ui-sans-serif, system-ui, sans-serif`,
   mono: `'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace`,
   // the strict scale (px); micro is the instrument caps label
   micro: 10,

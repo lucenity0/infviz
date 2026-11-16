@@ -8,7 +8,7 @@ import { AbTimeline, abRun, type AbRun } from './panels/abtimeline';
 import { KvPanel } from './panels/kv';
 import { Player } from './player';
 import { applyTokens } from './tokens';
-import { esc, reduceMotion, shortModel } from './ui';
+import { esc, outlined, reduceMotion, shortModel } from './ui';
 
 const q = new URLSearchParams(location.search);
 applyTokens(q.get('theme') === 'light' ? 'light' : 'dark');
@@ -46,7 +46,7 @@ function statsHtml(a: RunSummary, b: RunSummary, device: string): string {
   const row = (lab: string, term: string, av: string, bv: string, d = '') =>
     `<tr${term ? ` data-term="${term}"` : ''}><th class="lab">${lab}</th><td class="num">${av}</td><td class="num">${bv}</td><td class="num">${d}</td></tr>`;
   return `
-    <div class="head"><span class="title">A against B</span><span class="sub">one recording each · ${esc(device)}</span></div>
+    <div class="head"><span class="title">${outlined('A AGAINST B', 'A against B')}</span><span class="sub">one recording each · ${esc(device)}</span></div>
     <table class="ab">
       <thead><tr><th></th><th class="lab">A · ${esc(describe(a))}</th><th class="lab">B · ${esc(describe(b))}</th><th class="lab">B ÷ A</th></tr></thead>
       <tbody>
@@ -91,7 +91,7 @@ async function main() {
   const cfgA = A[0] as Extract<InfvizEvent, { type: 'config' }>;
   $('stats').innerHTML = statsHtml(sa, sb, cfgA.device);
   $('cstatus').innerHTML = `
-    <div class="seg brand"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="0" y="0" width="6" height="6" fill="currentColor"/><rect x="8" y="0" width="6" height="6" fill="currentColor"/><rect x="0" y="8" width="6" height="6" fill="currentColor"/><rect x="8.5" y="8.5" width="5" height="5" fill="none" stroke="currentColor"/></svg><b>infviz</b><span class="mode">COMPARE</span></div>
+    <div class="seg brand"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="0" y="0" width="6" height="6" fill="currentColor"/><rect x="8" y="0" width="6" height="6" fill="currentColor"/><rect x="0" y="8" width="6" height="6" fill="currentColor"/><rect x="8.5" y="8.5" width="5" height="5" fill="none" stroke="currentColor"/></svg><b>${outlined('infviz')}</b><span class="mode">COMPARE</span></div>
     <div class="seg"><span class="lab">A</span><span class="v ell">${esc(fa)}</span></div>
     <div class="seg"><span class="lab">B</span><span class="v ell">${esc(fb)}</span></div>
     <div class="seg"><span class="lab">Target ← draft</span><span class="v ell"><b>${esc(shortModel(sa.model))}</b> ← ${esc(shortModel(sb.draft))}</span></div>

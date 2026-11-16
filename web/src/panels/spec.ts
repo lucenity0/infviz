@@ -8,7 +8,7 @@ import { selection } from '../select';
 import { Feed } from './feed';
 import type { ReqInfo } from '../reducer';
 import { MOTION, reqColor } from '../tokens';
-import { el, esc, snippet, tip, tokHtml } from '../ui';
+import { el, esc, outlined, snippet, tip, tokHtml } from '../ui';
 
 export class SpecPanel {
   private big: HTMLElement;
@@ -27,7 +27,7 @@ export class SpecPanel {
 
   constructor(root: HTMLElement) {
     root.innerHTML = `
-      <div class="head"><span class="title" data-term="spec">Speculative decoding</span><span class="sub" data-sub></span></div>
+      <div class="head"><span class="title" data-term="spec">${outlined('SPECULATIVE DECODING', 'Speculative decoding')}</span><span class="sub" data-sub></span></div>
       <div class="poster">
         <div class="big" data-big></div>
         <div class="cap" data-cap></div>

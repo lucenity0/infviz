@@ -39,5 +39,7 @@ jobs:
         run: |
           if git ls-files | grep -i 'fonts/licensed/'; then echo "licensed font is tracked by git"; exit 1; fi
           if [ -e dist/fonts/licensed ]; then echo "licensed font leaked into dist/"; exit 1; fi
+          if git ls-files | grep -iE 'brutal.*\.(woff2?|ttf|otf)$'; then echo "a Brutal Milk font file is tracked"; exit 1; fi
+          if find dist -iname '*brutal*' | grep .; then echo "a Brutal Milk file is in dist/"; exit 1; fi
       - name: both pages are built
         run: test -f dist/index.html && test -f dist/compare.html

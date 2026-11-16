@@ -6,7 +6,7 @@
 import type { Clock } from '../compare';
 import type { InfvizEvent } from '../events';
 import { C, TYPE, hatch } from '../tokens';
-import { fitCanvas } from '../ui';
+import { fitCanvas, outlined } from '../ui';
 
 const GUTTER = 208;
 const RULER = 22;
@@ -57,7 +57,7 @@ export class AbTimeline {
 
   constructor(root: HTMLElement) {
     root.innerHTML = `
-      <div class="head"><span class="title">Wall clock</span><span class="sub">seconds since each run's first step</span><span class="grow"></span>
+      <div class="head"><span class="title">${outlined('WALL CLOCK', 'Wall clock')}</span><span class="sub">seconds since each run's first step</span><span class="grow"></span>
         <div class="legend">
           <span class="key lab"><i class="sw ab-a"></i>A</span>
           <span class="key lab"><i class="sw ab-b"></i>B</span>

@@ -9,7 +9,7 @@
   --ink: #e8ebef;
   --ink-2: #aab2bd;
   --ink-3: #7f8895;
-  --sans: 'Brutal Milk', 'Inter Tight Variable', ui-sans-serif, system-ui, sans-serif;
+  --sans: 'Inter Tight Variable', ui-sans-serif, system-ui, sans-serif;
   --mono: 'Geist Mono', ui-monospace, Menlo, monospace;
   color-scheme: dark;
 }
@@ -319,14 +319,10 @@ canvas {
   color: var(--ink);
   white-space: nowrap;
 }
-/* Brutal Milk has proportional digits only: fix each glyph's box so the number can't jitter */
-.poster .big .d {
-  display: inline-block;
-  width: 0.5em;
-  text-align: center;
-}
-.poster .big .d.p {
-  width: 0.2em;
+/* tabular figures: every digit has the same advance, so the number never jitters as it changes */
+.poster .big {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
 }
 .poster .big .none {
   display: flex;
@@ -1287,4 +1283,11 @@ a.tbtn {
 .actions .tbtn {
   height: 32px;
   border: 1px solid var(--ink-3);
+}
+
+/* fixed titles in the display face, as vector outlines (src/outlines.ts) */
+svg.ol {
+  display: inline-block;
+  fill: currentColor;
+  overflow: visible;
 }

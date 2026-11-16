@@ -12,7 +12,7 @@ import { selection } from '../select';
 import type { ReqInfo, State } from '../reducer';
 import type { StepRec } from '../timeline';
 import { C, hatch, reqColor, rgba, TYPE } from '../tokens';
-import { esc, fitCanvas, fitText, snippet, tip } from '../ui';
+import { esc, fitCanvas, fitText, outlined, snippet, tip } from '../ui';
 
 const GUTTER = 208; // label column
 const RULER = 22;
@@ -46,7 +46,7 @@ export class TimelinePanel {
   constructor(root: HTMLElement) {
     root.innerHTML = `
       <div class="head">
-        <span class="title" data-term="batch">Timeline</span><span class="sub" data-sub></span>
+        <span class="title" data-term="batch">${outlined('TIMELINE', 'Timeline')}</span><span class="sub" data-sub></span>
         <span class="grow"></span>
         <div class="legend">
           <span class="key lab" data-term="waiting"><i class="sw lane-wait"></i>Waiting</span>

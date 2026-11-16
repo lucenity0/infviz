@@ -3,7 +3,7 @@
 // from the HTTP reply, so every open tab agrees on what the engine is actually running.
 import { api, type EngineInfo } from '../live';
 import type { Player } from '../player';
-import { esc } from '../ui';
+import { esc, outlined } from '../ui';
 
 export interface Preset {
   id: string;
@@ -150,7 +150,7 @@ export class SettingsPanel {
       `<label class="fld"${term ? ` data-term="${term}"` : ''}><span class="lab">${lab}</span><input id="${id}" type="number" min="${lo}" max="${hi}" step="1" ${val !== undefined ? `value="${val}"` : ''} /></label>`;
     const keep = (id: string) => (this.el.querySelector(`#${id}`) as HTMLInputElement | null)?.value;
     this.el.innerHTML = `
-      <div class="head"><span class="title">Engine</span><span class="sub">${cur ? `now ${cur.blocks} blocks · batch ${cur.max_batch} · ${cur.speculation ? `k ${cur.spec_k}` : 'no draft'}` : 'no engine'}</span><span class="grow"></span>
+      <div class="head"><span class="title">${outlined('ENGINE', 'Engine')}</span><span class="sub">${cur ? `now ${cur.blocks} blocks · batch ${cur.max_batch} · ${cur.speculation ? `k ${cur.spec_k}` : 'no draft'}` : 'no engine'}</span><span class="grow"></span>
         <button class="tbtn x" data-close aria-label="Close (Esc)" title="Close · Esc">×</button></div>
       <div class="pbody">
         <div class="sh"><span class="lab">Presets</span><span class="dim">restart the engine, then start a load burst</span></div>
