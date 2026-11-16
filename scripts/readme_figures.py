@@ -581,9 +581,28 @@ def load_sweeps() -> list[dict]:
                     "acceptance": _median([r["acceptance"] or 0 for r in sel]),
                     "n": len(sel),
                 }
-        out.append({"label": f"{name} · {r0['dtype']}", "file": f.name, "cells": cells,
+        size = re.search(r"(\d+(?:\.\d+)?)B", r0["target"])
+        out.append({"label": f"{name} · {size.group(1) if size else '?'}B target", "dtype": r0["dtype"],
+                    "size": float(size.group(1)) if size else 0.0, "dev": name, "file": f.name, "cells": cells,
                     "batches": sorted({b for b, _ in cells}), "ks": sorted({k for _, k in cells})})
+    out.sort(key=lambda d: (d["dev"], d["size"]))
     return out
+
+
+def marker(di: int, x: float, y: float, r: float = 5.5, ring: bool = True) -> str:
+    """series markers that survive grayscale: filled circle, hollow circle, filled square"""
+    col = MARK[min(di, len(MARK) - 1)]
+    ringa = f' stroke="{BG}" stroke-width="2"' if ring else ""
+    if di == 0:
+        return f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r}" fill="{col}"{ringa}/>'
+    if di == 1:
+        return f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r - 0.5}" fill="{BG}" stroke="{col}" stroke-width="2"/>'
+    h = r * 0.9
+    return f'<rect x="{x - h:.1f}" y="{y - h:.1f}" width="{2 * h:.1f}" height="{2 * h:.1f}" fill="{col}"{ringa}/>'
+
+
+MARK = [INK, INK2, INK3]  # series: never request hues (colour is reserved for requests)
+DASH = ["", "", "6 4"]
 
 
 def breakeven() -> str:
@@ -599,7 +618,6 @@ def breakeven() -> str:
         text_all.append(str(a[2]))
         return T(*a, **k)
 
-    MARK = [INK, INK2]  # devices: solid ink, then hollow ink2 (colour is reserved for requests)
     padL, padR, gap = 96, 40, 72
     pw = (W - padL - padR - gap * (len(batches) - 1)) / len(batches)
     top1, h1 = 196, 300  # speed-up chart
@@ -618,16 +636,13 @@ def breakeven() -> str:
     body.append(f'<rect width="{W}" height="{H}" fill="{BG}"/>')
     body.append(f'<rect x="0.5" y="0.5" width="{W - 1}" height="{H - 1}" fill="none" stroke="{HAIR}"/>')
     body.append(t(34, 62, "Does speculation pay for itself?", 40, INK, SANS, weight=300, ls=-0.5))
+    dts = sorted({d["dtype"] for d in data})
     body.append(t(36, 96, "Wall-clock tokens per second against plain decoding (k = 0), same 16 requests, "
-                  "all arriving at once, no KV eviction.", 16, INK3))
+                  f"all arriving at once, no KV eviction, {'/'.join(dts)}, 0.5B draft.", 16, INK3))
     # legend: devices
     lx = 36
     for i, d in enumerate(data):
-        cx = lx + 6
-        if i == 0:
-            body.append(f'<circle cx="{cx}" cy="134" r="5.5" fill="{MARK[0]}"/>')
-        else:
-            body.append(f'<circle cx="{cx}" cy="134" r="5" fill="{BG}" stroke="{MARK[1]}" stroke-width="2"/>')
+        body.append(marker(i, lx + 6, 134, ring=False))
         body.append(t(lx + 20, 139, d["label"], 15, INK2))
         lx += 20 + mono_w(d["label"], 15) + 36
     body.append(f'<line x1="0" y1="164" x2="{W}" y2="164" stroke="{HAIR}"/>')
@@ -660,23 +675,21 @@ def breakeven() -> str:
         # series
         for di, d in enumerate(data):
             pts = [(xs[k], Y(d["cells"][(b, k)]["speedup"]), d["cells"][(b, k)]) for k in ks if (b, k) in d["cells"]]
-            col = MARK[min(di, 1)]
+            col = MARK[min(di, len(MARK) - 1)]
+            dash = f' stroke-dasharray="{DASH[di]}"' if di < len(DASH) and DASH[di] else ""
             if len(pts) > 1:
-                body.append(f'<path d="M{" L".join(f"{x:.1f},{y:.1f}" for x, y, _ in pts)}" stroke="{col}" stroke-width="2" fill="none"/>')
+                body.append(f'<path d="M{" L".join(f"{x:.1f},{y:.1f}" for x, y, _ in pts)}" stroke="{col}" stroke-width="2" fill="none"{dash}/>')
             for (x, y, c) in pts:
                 if c["hi"] - c["lo"] > 0.004:
                     body.append(f'<line x1="{x:.1f}" y1="{Y(c["lo"]):.1f}" x2="{x:.1f}" y2="{Y(c["hi"]):.1f}" stroke="{col}" stroke-width="1"/>')
-                if di == 0:
-                    body.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="5.5" fill="{col}" stroke="{BG}" stroke-width="2"/>')
-                else:
-                    body.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="5" fill="{BG}" stroke="{col}" stroke-width="2"/>')
+                body.append(marker(di, x, y))
             # direct label at the best k > 0: above if this series is the higher one there
             bk = max((k for k in ks[1:] if (b, k) in d["cells"]), key=lambda k: d["cells"][(b, k)]["speedup"])
             bx_, by_ = xs[bk], Y(d["cells"][(b, bk)]["speedup"])
             others = [o["cells"][(b, bk)]["speedup"] for o in data if o is not d and (b, bk) in o["cells"]]
             above = not others or d["cells"][(b, bk)]["speedup"] >= max(others)
             body.append(t(bx_, by_ - 14 if above else by_ + 26, f"{d['cells'][(b, bk)]['speedup']:.2f}×", 14,
-                          INK if di == 0 else INK2, anchor="middle", weight=500))
+                          MARK[min(di, len(MARK) - 1)] if di < 2 else INK2, anchor="middle", weight=500))
         # x axis + tok/pass row (first device)
         for k in ks:
             body.append(t(xs[k], top1 + h1 + 26, f"k {k}", 14, INK2, anchor="middle"))
@@ -684,10 +697,7 @@ def breakeven() -> str:
             body.append(t(x0 - 30, top1 + h1 + 56, "tok/pass", 12, INK3, anchor="end"))
         for di, d in enumerate(data):
             cy_ = top1 + h1 + 52 + 20 * di
-            if di == 0:
-                body.append(f'<circle cx="{x0 - 14}" cy="{cy_:.1f}" r="4" fill="{MARK[0]}"/>')
-            else:
-                body.append(f'<circle cx="{x0 - 14}" cy="{cy_:.1f}" r="3.5" fill="{BG}" stroke="{MARK[1]}" stroke-width="1.5"/>')
+            body.append(marker(di, x0 - 14, cy_, r=4, ring=False))
             for k in ks:
                 c = d["cells"].get((b, k))
                 if c:
@@ -731,7 +741,7 @@ def breakeven() -> str:
         body.append(t(kx + 22, ky + 1, label, 14, INK3, SANS))
         kx += 22 + len(label) * 7.4 + 40
     if len(data) > 1:
-        note = "bars per k: " + ", then ".join(d["label"].split(" · ")[0] for d in data)
+        note = "bars per k, left to right: " + ", ".join(d["label"].replace(" target", "") for d in data)
         body.append(t(kx, ky + 1, note, 14, INK3, SANS))
     reps = max(c["n"] for d in data for c in d["cells"].values())
     body.append(t(36, ky + 32, f"median of {reps} repeats, each paired with its own k 0 run · range shown · "

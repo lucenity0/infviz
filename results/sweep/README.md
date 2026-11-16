@@ -22,3 +22,15 @@ Two extra measurements on the same VM, single runs, kept here because §4 relies
 
 - **Per-pass cost tracks layer count.** `infviz sweep --target Qwen/Qwen2.5-0.5B-Instruct --ks 0` ran plain decoding of the draft model alone at 37.5 tok/s (batch 1) and 167.3 tok/s (batch 6). The 1.5B target ran at 31.8 and 141.6, so one 0.5B pass costs about 0.85 of a 1.5B pass. Their layer counts are 24 and 28 (ratio 0.86); their sizes differ by about 3×.
 - **The GPU waits on the host.** Sampling `nvidia-smi --query-gpu=utilization.gpu` every 200 ms during a 16-request plain-decoding run at batch 1 gave a median of 49% over the busy samples: about half the time no kernel was running. (That counter is coarse: it reports whether any kernel was active, not how much of the GPU it used.)
+
+## `cuda-nvidia-l4-bf16-7b.jsonl`: prediction, written before the run
+
+The 1.5B sweeps suggest a simple cost model: speed-up ≈ tok/pass × decode step ÷ (k × draft pass + verify step), where the steps and passes are wall-clock per engine step. On the L4 a 0.5B draft pass costs 0.84 of a 1.5B target pass, and the model says that ratio must fall to about 0.5–0.6 before k = 2–4 can break even. A 7B target (same 28 layers, about 15 GB of weights to stream per pass) should raise the target's cost without changing the draft's.
+
+A smoke run on 2026-11-16 (3 requests, one repeat, same L4 VM type) measured: plain decode step 60.7 ms (batch 1) and 62.2 ms (batch 6); draft pass 26.3–26.9 ms; verify step 63.6–65.1 ms. The draft/target ratio fell to about 0.43. Its tok/pass was 2.05 at k = 2 and 2.31 at k = 4, lower than with the 1.5B target.
+
+Predictions for the full sweep (16 requests, k 0–8, batch 1 and 6, three repeats), committed before it runs:
+
+1. k = 1 or k = 2 is the best setting at both batch sizes, at about 1.05–1.15×, and these are the only settings above 1.0×.
+2. k = 4 lands near 0.83× and k ≥ 6 below that.
+3. With the full run's own tok/pass and per-pass costs plugged in, the cost model is within ±10% of every measured speed-up.

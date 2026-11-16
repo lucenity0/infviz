@@ -30,6 +30,10 @@ What comes next for infviz, in the order it will be done. Each item says why it 
 13. **Sampling.** Temperature sampling with the standard speculative acceptance rule; acceptance will differ from greedy.
 14. **Never run yet:** the Colab notebook (fixed by item 2), the Llama / SmolLM2 model path, and the animated SVGs on GitHub's own page.
 
+## Deferred
+
+- **A compiled decode path (CUDA graphs).** The sweeps show this engine is host-bound, and a compiled path would likely move the draft/target cost ratio. It is deferred: it would measure a different engine rather than explain this one, the ragged forward pass changes shape every step (static shapes are probably a prerequisite), it would rewrite parity-tested code, and it has no MPS equivalent. Moving the ratio with a larger target model tests the same question without changing the engine.
+
 ## How they connect
 
 - Items 1, 7 and 8 share one engine-control layer (build an engine with new settings, reuse loaded weights), built once in item 1.
