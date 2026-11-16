@@ -56,7 +56,8 @@ function startReplay(text: string, label: string) {
   if (q.has('speed')) player.setSpeed(Number(q.get('speed')) || 1);
   if (q.has('pos')) player.seek(Number(q.get('pos')));
   else if (q.has('step')) player.seekStep(Number(q.get('step')));
-  if (!poster && ((!q.has('step') && !q.has('pos')) || q.has('play'))) player.play();
+  // replays open paused: the visitor starts them (or a link asks with &play=1)
+  if (!poster && q.has('play')) player.play();
   markLoaded();
   return true;
 }

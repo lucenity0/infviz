@@ -100,7 +100,7 @@ async function main() {
 
   // ---- the shared clock
   let sec = Math.min(end, Math.max(0, Number(q.get('t')) || 0));
-  let playing = !poster && !q.has('t');
+  let playing = !poster && q.has('play'); // opens paused, like the single-run page
   let speed = Math.max(0.25, Math.min(4, Number(q.get('speed')) || 1));
   const stepwise = reduceMotion();
   const seek = (s: number) => {
