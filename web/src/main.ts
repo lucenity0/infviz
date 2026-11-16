@@ -17,6 +17,9 @@ import { reduceMotion } from './ui';
 applyTokens(new URLSearchParams(location.search).get('theme') === 'light' ? 'light' : 'dark');
 // poster: a fixed frame for screenshots and GIF capture (no transport, no hover, no autoplay)
 const poster = new URLSearchParams(location.search).has('poster');
+// carry the theme across to the compare page
+if (new URLSearchParams(location.search).get('theme') === 'light')
+  (document.getElementById('b-compare') as HTMLAnchorElement).href = 'compare.html?theme=light';
 if (poster) document.documentElement.classList.add('poster');
 let markLoaded: () => void = () => {};
 const loaded = new Promise<void>((r) => (markLoaded = r));

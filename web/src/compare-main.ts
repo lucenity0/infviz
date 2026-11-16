@@ -14,6 +14,7 @@ const q = new URLSearchParams(location.search);
 applyTokens(q.get('theme') === 'light' ? 'light' : 'dark');
 const poster = q.has('poster');
 if (poster) document.documentElement.classList.add('poster');
+if (q.get('theme') === 'light') document.querySelector<HTMLAnchorElement>('a[href="./"]')?.setAttribute('href', './?theme=light');
 
 const SPEEDS = [0.25, 0.5, 1, 2, 4];
 const $ = (id: string) => document.getElementById(id)!;

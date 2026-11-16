@@ -45,7 +45,10 @@ const DARK: Colors = {
   other: '#8b939e',
 };
 
-// Light set (phase 2: structure in place, values provisional — not yet validated).
+// Light set. Validated with validate_palette.js --mode light --surface #f4f5f6: PASS lightness
+// band, chroma floor, adjacent CVD ΔE >= 11.8, normal-vision >= 17.0, contrast >= 3:1. Text
+// (WCAG, on bg / sunken): ink 16.9 / 15.9, ink2 8.6 / 8.1, ink3 5.3 / 5.0; discard 4.8 / 4.5.
+// Cached vs free cell 1.72:1, matching the dark set's 1.66:1.
 const LIGHT: Colors = {
   bg: '#f4f5f6',
   sunken: '#eceef0',
@@ -55,7 +58,7 @@ const LIGHT: Colors = {
   ink2: '#3f4752',
   ink3: '#5d6672',
   ink4: '#cdd2d8',
-  cached: '#a7afb9',
+  cached: '#98a1ac',
   discard: '#c8372c',
   focus: '#111418',
   req: ['#2f6bc4', '#11866a', '#7a5cb6', '#55801f', '#a74d83', '#9a6510', '#00809a'],

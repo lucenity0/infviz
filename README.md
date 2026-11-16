@@ -99,7 +99,7 @@ uv run infviz check ../traces/run.jsonl                              # honesty c
 uv run infviz sweep --out ../results/sweep/mine.jsonl                # time speculation against k (about 25 min)
 ```
 
-Drop any `.jsonl` onto the page, or open `?trace=<url>`; compare two with `compare.html?a=<url>&b=<url>`. Deep links take `?step=45` or a fractional `?pos=30.6`, plus `&play=1` and `&speed=4`. Knobs that make things visible: `--blocks` (smaller means more eviction and preemption), `--max-batch`, `--spec-k`, `--draft none`, `--step-delay`.
+Drop any `.jsonl` onto the page, or open `?trace=<url>`; compare two with `compare.html?a=<url>&b=<url>`. Deep links take `?step=45` or a fractional `?pos=30.6`, plus `&play=1`, `&speed=4` and `&theme=light`. Knobs that make things visible: `--blocks` (smaller means more eviction and preemption), `--max-batch`, `--spec-k`, `--draft none`, `--step-delay`.
 
 **Posters and GIFs.** Add `&poster=1` for a clean fixed frame. To write files, `cd web && npm run capture -- --at 45 --out poster.png`, or `--from 20 --to 60 --out run.gif` (add `--page compare` for the comparison, in seconds). It drives your installed Chrome headlessly, every frame is the page settled on one exact position, and it uses only the open-licence fonts.
 
