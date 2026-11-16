@@ -35,23 +35,6 @@ export class Transport {
     this.$('b-open').onclick = () => file.click();
     file.onchange = () => file.files?.[0] && onOpen(file.files[0]);
 
-    this.$<HTMLFormElement>('f-load').onsubmit = (e) => {
-      e.preventDefault();
-      const n = Number(this.$<HTMLInputElement>('in-n').value) || 12;
-      const rate = Number(this.$<HTMLInputElement>('in-rate').value) || 1;
-      api.load(n, rate).then(
-        () => this.toast(`Load started: ${n} requests at ${rate}/s`),
-        (err) => this.toast(`Load failed: ${err}`),
-      );
-    };
-    this.$<HTMLFormElement>('f-delay').onsubmit = (e) => {
-      e.preventDefault();
-      const d = Number(this.$<HTMLInputElement>('in-delay').value);
-      api.speed(d).then(
-        () => this.toast(`Engine step delay ${d}s`),
-        (err) => this.toast(`Failed: ${err}`),
-      );
-    };
     this.$<HTMLFormElement>('f-req').onsubmit = (e) => {
       e.preventDefault();
       const inp = this.$<HTMLInputElement>('in-prompt');
@@ -87,6 +70,7 @@ export class Transport {
     this.speedBtns.forEach((b, i) => b.setAttribute('aria-pressed', String(SPEEDS[i] === p.speed)));
     this.liveBtn.hidden = !live;
     this.liveBtn.setAttribute('aria-pressed', String(live && p.follow));
-    for (const id of ['f-load', 'f-delay', 'f-req']) this.$(id).hidden = !live;
+    for (const id of ['f-req', 'b-engine']) this.$(id).hidden = !live;
+    this.$('b-compare').hidden = live; // compare is for recordings
   }
 }

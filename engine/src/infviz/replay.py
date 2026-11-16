@@ -15,7 +15,8 @@ class State:
 
     def apply(self, e: dict) -> None:
         t = e["type"]
-        if t == "config":
+        if t == "config":  # a new session (the live server rebuilt its engine): start over
+            self.__init__()
             self.pools = {
                 name: [{"state": "free", "owners": [], "filled": 0} for _ in range(p["n_blocks"])]
                 for name, p in e["pools"].items()

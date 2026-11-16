@@ -91,7 +91,7 @@ uv run infviz serve                      # live engine + WebSocket on :8000 (fir
 cd web && npm install && npm run dev     # http://localhost:5173
 ```
 
-Click **Start load** in the transport bar, or type a prompt and **Send**. Without an engine, the page replays the bundled trace, and `npm run build` produces a static site that does the same with no server.
+Click **Engine** in the transport bar and pick a preset (it restarts the engine with those settings and sends a burst of requests), or type a prompt and **Send**. Without an engine, the page replays the bundled trace, and `npm run build` produces a static site that does the same with no server.
 
 ```bash
 uv run infviz record --out ../traces/run.jsonl -n 24 --blocks 40     # record a run headless

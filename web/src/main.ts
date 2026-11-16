@@ -4,6 +4,7 @@ import { connectLive } from './live';
 import { currentStep, storyAt } from './panels/feed';
 import { InspectPanel } from './panels/inspect';
 import { KvPanel } from './panels/kv';
+import { SettingsPanel } from './panels/settings';
 import { SpecPanel } from './panels/spec';
 import { StatusStrip } from './panels/status';
 import { TimelinePanel } from './panels/timeline';
@@ -36,6 +37,8 @@ function toast(msg: string, ms = 3500) {
   (toast as unknown as { h?: number }).h = window.setTimeout(() => (t.hidden = true), ms);
 }
 const transport = new Transport(player, (f) => openFile(f), toast);
+const settings = new SettingsPanel(player, toast);
+document.getElementById('b-engine')!.addEventListener('click', () => settings.toggle());
 
 function startReplay(text: string, label: string) {
   const ev = parseJsonl(text);
@@ -108,6 +111,8 @@ async function connect(first: boolean): Promise<boolean> {
           started = true;
           player.startLive('live');
         }
+        // a new config = the engine was rebuilt: request ids restart, so drop the selection
+        if (e.type === 'config') selection.set(null);
         player.append(e);
       },
       () => {
@@ -191,6 +196,7 @@ function renderAll() {
   timeline.render(player);
   inspect.render(player);
   renderNarration();
+  settings.tick();
 }
 function frame(now: number) {
   const dt = Math.min(100, now - last);

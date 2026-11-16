@@ -19,6 +19,15 @@ class Emitter:
         self.since_snapshot: list[dict] = []
         self.lock = threading.Lock()
 
+    def reset(self) -> None:
+        """Start a new session on the same emitter (engine rebuilt): step 0, a new clock,
+        no backlog. Subscribers stay attached and receive the new `config` next."""
+        with self.lock:
+            self.t0 = time.perf_counter()
+            self.step = 0
+            self.config = None
+            self.since_snapshot = []
+
     def emit(self, type_: str, **fields: Any) -> dict:
         ev = {"type": type_, "step": self.step, "t": round(time.perf_counter() - self.t0, 6), **fields}
         with self.lock:

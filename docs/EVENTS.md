@@ -33,7 +33,11 @@ the block stays `used`.
 ## Event types
 
 ### Setup
-- `config` — first event.
+- `config` — first event of a session. A live server that rebuilds its engine (new settings
+  from the browser) emits a new `config` on the same stream: it starts a **new session**.
+  Reducers start over from an empty state, `step` restarts at 0, `t` restarts near 0, and
+  request ids restart at 0. The new `config` is followed directly by that session's
+  `snapshot`, and no event of the previous session follows it.
   `{models: {target: str, draft: str|null}, device: str, block_size: int,
     pools: {target: {n_blocks: int}, draft?: {n_blocks: int}},
     max_batch: int, spec_k: int, snapshot_every: int}`
@@ -100,3 +104,9 @@ reproduce each `snapshot` exactly (pools, waiting/running/finished). Tests enfor
 - `POST /api/requests {prompt: str, max_new_tokens?: int}` → `{rid}`
 - `POST /api/load {n: int, rate: float}` — starts the built-in load generator (Poisson arrivals, `rate` req/s).
 - `POST /api/speed {step_delay: float}` — seconds of sleep between engine steps (makes live mode watchable).
+- `GET /api/config` → `{settings: {blocks, max_batch, speculation, spec_k}, draft_available, limits, floors, step_delay, epoch}`.
+  `floors[k]` is the smallest pool (blocks) in which every built-in load-generator request fits at that k.
+- `POST /api/config {blocks: int, max_batch: int, speculation: bool, spec_k?: int}` — rebuild the engine
+  between two steps with these settings (loaded weights are reused). Replies after the new
+  session's `config` has been emitted; 400 with a reason if the settings are out of range or the
+  pool is below the floor. Load bursts started before the rebuild stop.

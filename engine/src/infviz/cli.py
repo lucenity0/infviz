@@ -44,12 +44,26 @@ def build_engine(a, emitter=None, store=None):
 def cmd_serve(a) -> None:
     import uvicorn
 
-    from .server import create_app
+    from .engine import Engine, ModelStore
+    from .server import EngineHost, create_app
 
-    eng = build_engine(a)
-    eng.step_delay = a.step_delay
-    print(f"infviz: engine ready on {eng.device}; ws://{a.host}:{a.port}/ws")
-    uvicorn.run(create_app(eng), host=a.host, port=a.port, log_level="warning")
+    store = ModelStore()
+    draft = None if a.draft == "none" else a.draft
+
+    def factory(st: dict, em):
+        spec = st["speculation"] and draft is not None
+        return Engine(
+            a.target, draft if spec else None, device=a.device, dtype=DTYPES[a.dtype],
+            block_size=a.block_size, n_blocks=st["blocks"], draft_blocks=a.draft_blocks,
+            max_batch=st["max_batch"], spec_k=st["spec_k"] if spec else 0,
+            snapshot_every=a.snapshot_every, emitter=em, store=store,
+        )
+
+    settings = {"blocks": a.blocks, "max_batch": a.max_batch,
+                "speculation": draft is not None, "spec_k": a.spec_k if draft else 0}
+    host = EngineHost(factory, settings, draft_available=draft is not None, step_delay=a.step_delay)
+    print(f"infviz: engine ready on {host.engine.device}; ws://{a.host}:{a.port}/ws")
+    uvicorn.run(create_app(host), host=a.host, port=a.port, log_level="warning")
 
 
 def cmd_record(a) -> None:

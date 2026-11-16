@@ -52,10 +52,30 @@ export function connectLive(
 
 async function post(path: string, body: unknown) {
   const r = await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
-  if (!r.ok) throw new Error(`${path}: ${r.status}`);
+  if (!r.ok) {
+    const detail = await r.json().then((j) => j?.detail).catch(() => null);
+    throw new Error(detail ? String(detail) : `${path}: ${r.status}`);
+  }
   return r.json().catch(() => ({}));
 }
+
+export interface EngineInfo {
+  settings: { blocks: number; max_batch: number; speculation: boolean; spec_k: number };
+  draft_available: boolean;
+  limits: { blocks: [number, number]; max_batch: [number, number]; spec_k: [number, number] };
+  /** smallest pool (blocks) per k in which every built-in request fits */
+  floors: Record<string, number>;
+  step_delay: number;
+  epoch: number;
+}
+
 export const api = {
+  getConfig: async (): Promise<EngineInfo> => {
+    const r = await fetch('/api/config');
+    if (!r.ok) throw new Error(`/api/config: ${r.status}`);
+    return r.json();
+  },
+  setConfig: (s: EngineInfo['settings']) => post('/api/config', s) as Promise<EngineInfo>,
   load: (n: number, rate: number) => post('/api/load', { n, rate }),
   speed: (step_delay: number) => post('/api/speed', { step_delay }),
   request: (prompt: string, max_new_tokens?: number) =>

@@ -59,16 +59,26 @@ def arrival_steps(n: int, mean_gap: float, seed: int = 0) -> list[int]:
     return steps
 
 
-def start_live(engine, n: int, rate: float, seed: int | None = None) -> threading.Thread:
-    """Background thread submitting ``n`` requests with Poisson arrivals at ``rate`` req/s."""
+def start_live(target, n: int, rate: float, seed: int | None = None) -> threading.Thread:
+    """Background thread submitting ``n`` requests with Poisson arrivals at ``rate`` req/s.
+
+    ``target`` is an Engine or an EngineHost; with a host, each request goes to the
+    current engine and the burst stops if the engine is rebuilt (its epoch changes)."""
     seed = seed if seed is not None else int(time.time())
     work = make_workload(n, seed)
     rng = random.Random(seed)
+    epoch = getattr(target, "epoch", None)
 
     def run():
         for p, max_new, system in work:
-            engine.add_request(p, max_new, system=system)
-            engine.wake()
+            if epoch is not None and target.epoch != epoch:
+                return
+            eng = getattr(target, "engine", target)
+            try:
+                eng.add_request(p, max_new, system=system)
+            except ValueError:
+                continue  # does not fit this pool; skip it rather than kill the burst
+            eng.wake()
             time.sleep(rng.expovariate(rate))
 
     th = threading.Thread(target=run, daemon=True)
