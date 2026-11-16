@@ -21,6 +21,7 @@ from infviz.replay import check_events
 PAIRS = {
     "qwen": ("Qwen/Qwen2.5-1.5B-Instruct", "Qwen/Qwen2.5-0.5B-Instruct"),
     "smollm2": ("HuggingFaceTB/SmolLM2-360M-Instruct", "HuggingFaceTB/SmolLM2-135M-Instruct"),
+    "qwen7b": ("Qwen/Qwen2.5-7B-Instruct", "Qwen/Qwen2.5-0.5B-Instruct"),  # fp32 7B: ~30 GB, A100-class GPU
 }
 TARGET, DRAFT = PAIRS[os.environ.get("INFVIZ_TEST_PAIR", "qwen")]
 PARITY_TOL = 5e-4  # max |logit difference| vs Hugging Face transformers, fp32 (measured 1.1-1.6e-4 on MPS)
